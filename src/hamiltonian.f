@@ -16,38 +16,14 @@
 	integer, intent(in):: n
 
 	!write(*,*)'------------------1 '
-	call MakeHgBlock(n)
+	call MakeHgbBlock(n)
 	!write(*,*)'------------------2 '
-	if(.not. writewfs) then
-		call MakeHg(n,m)
-	else
-		call MakeHgAndVx(n,m)
-	endif
+	call MakeHgb(n,m)
 	!write(*,*)'------------------3 '
 	call MakeHd(n,m)
-	!write(*,*)'------------------4 '
-	call MakeHv(n,m)
-	!write(*,*)'------------------5 '
-	if(mv > 0) then
-		call MakeHbSec(n,m,mv)
-		!write(*,*)'------------------6 '
-		call MakeHb(n,m,mv)
-	else
-		Hb%nnz = 0; !use to calc size of sparse Hhtc in MakeHhtc
-	endif
-	!write(*,*)'------------------7 '
+
 	return
 	end subroutine HamParts
-! ===========================================
-!	subroutine MakeHam(n,m,mv)
-!	implicit none
-!	integer, intent(in):: n,m,mv
-!
-!	call MakeHhtc(n, wr,delta,lambda,wv)
-!
-!	subroutine
-!	end 	subroutine MakeHam
-! ===========================================
 
 	!----------------------------------------------------------
 	subroutine MakeHgbBlock(n)
@@ -106,7 +82,7 @@
 
 
 	!----------------------------------------------------------
-	subroutine MakeHg(n,nph)
+	subroutine MakeHgb(n,nph)
 	! constructs sparse Hg using Hg%sec
 	! saves the Hamiltonians in CSR format
 	implicit none
@@ -145,37 +121,41 @@
 
 	! p=0 and nph cases dealt with seperatly
 	do p=0,nph ! photons
-		x = dsqrt(dble(p)); ! a^-
-		y = dsqrt(dble(p+1)); ! a^+
+	 x = dsqrt(dble(p)); ! a^-
+	 y = dsqrt(dble(p+1)); ! a^+
 
-		! absolute basis index:
-		! n0up, n0dn:   up/dn here refer to changes in photon number
-		n0 = p*l; 
-		n0up = (p+1)*l; ! p < nph; 
-	  n0dn = (p-1)*l; ! p > 0
+	 ! absolute basis index:
+	 ! n0up, n0dn:   up/dn here refer to changes in photon number
+	 n0 = p*l; 
+	 n0up = (p+1)*l; ! p < nph; 
+	 n0dn = (p-1)*l; ! p > 0
 
-		! counter rotating term: a^+
+	 ! counter rotating term: a^+
+	 if(p<nph) then
 		i1 = p*2*q; i2 = i1 + q; ! *2*q because 2q terms in co+counter.
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(p)%row;
 		Hg%coo2(i1+1:i2) = n0up + Hg%sec(p)%col;			
 		Hg%coodat(i1+1:i2) = y * Hg%sec(p)%vdat; 
-
-		! co rotating term: a^-
+	 endif
+		
+	 ! co rotating term: a^-
+	 if(p>0) then
 		i1 = i2; i2 = i2 + q; 
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(p)%row;
 		Hg%coo2(i1+1:i2) = n0dn + Hg%sec(p)%col;	 ! n0dn: one less photon
 		Hg%coodat(i1+1:i2) = x * Hg%sec(p)%vdat; 
-
-		! SOC: sigma^+ tau^-
-		Hb%coo1(i1+1:i2) = n0 + Hb%sec(p)%row;
-		Hb%coo2(i1+1:i2) = n0 + Hb%sec(p)%col;		! n0: same photon number
-		Hb%coodat(i1+1:i2) = Hb%sec(p)%vdat; 
+	 endif
+		
+	 ! SOC: sigma^+ tau^-
+	 Hb%coo1(i1+1:i2) = n0 + Hb%sec(p)%row;
+	 Hb%coo2(i1+1:i2) = n0 + Hb%sec(p)%col;		! n0: same photon number
+	 Hb%coodat(i1+1:i2) = Hb%sec(p)%vdat; 
 
 				
 	end do
 
 	return
-	end 	subroutine MakeHg
+	end 	subroutine MakeHgb
 	!----------------------------------------------------------
 
 
@@ -238,9 +218,15 @@
 
 	! parameters for this job
 	wr = param(ijob)%wr; ! omega_R
-	delta = param(ijob)%del; ! detuning = w0-w or w-w0?
+	delta = param(ijob)%del; ! detuning = w0-w
 	lambda = param(ijob)%lam; ! for lambda_SOC
 	wv = param(ijob)%wv; ! for wt
+
+	g = wr/dsqrt(dble(n));
+	lamwv = lambda;
+
+	wc = param(ijob)%wc;
+	w0 = wc+delta;
 
 	! Hg has upper (a^+, counter-rotating terms) triangular
 	!      AND lower (a^-, co-rotating terms) triangular elements.
@@ -251,8 +237,6 @@
 	! combine all terms to make full Hamiltnian in coo
 	!..............................................
 
-	g = wr/dsqrt(dble(n));
-	lamwv = lambda;
 
 	nnz = Hg%nnz + Hb%nnz ; !+ Hg%ntot ! Hg%ntot for size of diagonal term, Hv+Hd
 	if(mode==1) nnz = nnz + Hg%ntot; ! Hg%ntot for size of diagonal term, Hv+Hd 
@@ -268,7 +252,7 @@
 	if(allocated(Hdv)) deallocate(Hdv)
 	allocate(Hdv(Hg%ntot))  ! set Hg%ntot first
 
-	Hdv = delta*Hd +  wv*Ht; ! summ arrays, values.
+	Hdv = wc*Hc + w0*Hs +  wv*Ht; ! summ arrays, values.
 	! diagonal will be kept seperate
 
 	n1 = 0;
