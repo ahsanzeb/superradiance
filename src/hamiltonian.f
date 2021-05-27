@@ -11,16 +11,16 @@
 	contains
  
 ! ===========================================
-	subroutine HamParts(n) ! arg n is norig here, set in main.f
+	subroutine HamParts(n,nph)
 	implicit none
-	integer, intent(in):: n
+	integer, intent(in):: n,nph
 
 	!write(*,*)'------------------1 '
 	call MakeHgbBlock(n)
 	!write(*,*)'------------------2 '
-	call MakeHgb(n,m)
+	call MakeHgb(n,nph)
 	!write(*,*)'------------------3 '
-	call MakeHd(n,m)
+	call MakeHd(n,nph)
 
 	return
 	end subroutine HamParts
@@ -33,7 +33,7 @@
 	double precision :: f2j,f0i,f1k
 	integer :: ntotp, ntotp1
 
-	p = 1; ! for the block for n sites
+	p = 1; ! for the block for n sites, only one block needed for superradiance code
 	if(allocated(Hg%sec)) deallocate(Hg%sec)
 	allocate(Hg%sec(p)) ! light-matter coupling: G and S
 	allocate(Hb%sec(p)) ! SOC: S and T
@@ -220,13 +220,15 @@
 	wr = param(ijob)%wr; ! omega_R
 	delta = param(ijob)%del; ! detuning = w0-w
 	lambda = param(ijob)%lam; ! for lambda_SOC
-	wv = param(ijob)%wv; ! for wt
 
 	g = wr/dsqrt(dble(n));
 	lamwv = lambda;
 
-	wc = param(ijob)%wc;
-	w0 = wc+delta;
+	! half values needed for diagonal terms:  
+	! *0.5 here for efficieny
+	wc = (param(ijob)%wc)*0.5d0; ! Cavity
+	w0 = (wc+delta)*0.5d0; !Signlet
+	wv = (param(ijob)%wv)*0.5d0; ! triplet
 
 	! Hg has upper (a^+, counter-rotating terms) triangular
 	!      AND lower (a^-, co-rotating terms) triangular elements.
@@ -287,7 +289,7 @@
 	! now diagonal terms
 	Hhtc%coo1(n1+1:n2) = (/ (i,i=1,n3) /)
 	Hhtc%coo2(n1+1:n2) = (/ (i,i=1,n3) /) 
-	Hhtc%coodat(n1+1:n2) = Hdv(1:n3)*0.5d0 ! half it for matvec() using upper triangular only
+	Hhtc%coodat(n1+1:n2) = Hdv(1:n3) ! already halved for matvec(), see wc,w0,wt above.
 
 	!write(*,'(a,3x,10000f15.10)') 'Hdv = ',Hhtc%coodat(n1+1:n2)
 

@@ -1,25 +1,34 @@
-##################################
-# makefile: otpoc stands for Optical and Transport Properties of Organic Microcavities
-##################################
+#################################################################################
+# makefile: superradiance in organic microcavities
+#################################################################################
+#	info:
+#	    organic molecules are 3 level systems
+#	    Hilbert space: 
+#	         N-molecules permutation symmetric states
+#	              times
+#	         nph cavity states
+#	       = {N+2 C 2} * nph = (N+2)*(N+1)*nph 
+#                (instead of 3^N*nph states in the full Hilbert space)
+#################################################################################
 
 FC 	= mpif90  #gfortran
 FFLAGS= -O3 -g -fbounds-check -fbacktrace
-LOADLIBES = libarpack_mac.a fftlib.a -llapack
+LOADLIBES = libarpack_mac.a -llapack
 
 # to link statically we might need something like: 
 #FFLAGS += -static
 #LOADLIBES += -lblas -lgfortran -lm
 
 
-SRC = main.f basis.f modmain.f maps.f hamiltonian.f diag.f correlation.f hamiltonian1.f correlationd.f dm.f
+SRC = main.f basis.f modmain.f maps.f hamiltonian.f diag.f dm.f
 
 OBJ = $(SRC:.f=.o)
 
 .SUFFIXES: .o .f
 
-otpoc: $(OBJ)
-	$(FC) -o otpoc $(FFLAGS) $(OBJ) $(LOADLIBES)
-	cp otpoc ~/bin/.
+super: $(OBJ)
+	$(FC) -o super $(FFLAGS) $(OBJ) $(LOADLIBES)
+	cp super ~/bin/.
 
 
 # Here are the compile steps
@@ -37,26 +46,18 @@ basis.o: basis.f modmain.o maps.o
 hamiltonian.o: hamiltonian.f modmain.o maps.o basis.o 
 	 $(FC) -c $(FFLAGS) hamiltonian.f 	
 
-hamiltonian1.o: hamiltonian1.f hamiltonian.f modmain.o maps.o basis.o 
-	 $(FC) -c $(FFLAGS) hamiltonian1.f 	
-
 
 diag.o: diag.f modmain.o
 	 $(FC) -c $(FFLAGS) diag.f 	
 
-correlation.o: correlation.f modmain.o 
-	 $(FC) -c $(FFLAGS) correlation.f 	
-
-correlationd.o: correlationd.f modmain.o correlation.o
-	 $(FC) -c $(FFLAGS) correlationd.f 	
 
 dm.o: dm.f modmain.o
 	 $(FC) -c $(FFLAGS) dm.f 
 
 
-main.o: main.f modmain.o maps.o basis.o hamiltonian.o diag.o correlation.o  hamiltonian1.o correlationd.o dm.o
+main.o: main.f modmain.o maps.o basis.o hamiltonian.o diag.o dm.o
 	 $(FC) -c $(FFLAGS) main.f	
 
 clean:
-	rm -rf *.o *.mod otpoc
+	rm -rf *.o *.mod super
   
