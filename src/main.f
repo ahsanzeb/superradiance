@@ -87,7 +87,7 @@ c	m1max=min(nsym,m1max);
 	ij1 = 0;
 	! until its useful to increase m1max, set it to the required m1.	
 	newm = .true. ! new m ?
-	!+++++++++++++++++++++START IJONB LOOP ++++++++++++++++++++++++++
+	!+++++++++++++++++++++START IJOB LOOP ++++++++++++++++++++++++++
 	do i=1,nj,1
 
 		!write(*,*)'jobs(node)%i1 , i2= ',jobs(node)%i1,jobs(node)%i2
