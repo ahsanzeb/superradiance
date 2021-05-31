@@ -4,9 +4,8 @@
 	implicit none
 	
 	public :: MakeHhtc, HamParts
-	private:: MakeHgSec,MakeHg
-	private:: MakeHd,MakeHv
-	private:: MakeHbSec,MakeHb
+	private:: MakeHgbBlock,MakeHgb
+	private:: MakeHd
 	public :: coocsr, coo2dense
 	contains
  
@@ -29,7 +28,7 @@
 	subroutine MakeHgbBlock(n)
 	implicit none
 	integer, intent(in) :: n
-	integer :: p,nnz,i,j,jj
+	integer :: p,nnz,i,j,jj,k
 	double precision :: f2j,f0i,f1k
 	integer :: ntotp, ntotp1
 
@@ -195,8 +194,8 @@
 	  i2 = ntotb * (p+1) 
 	  
 		Hc(i1+1:i2) = dble(p)
-		Hs(i1+1:i2) = (/basis%sec(n)%f(2,i), i=1,ntotb /)
-		Ht(i1+1:i2) = (/basis%sec(n)%f(1,i), i=1,ntotb /)
+		Hs(i1+1:i2) = (/(basis%sec(n)%f(2,i), i=1,ntotb) /)
+		Ht(i1+1:i2) = (/ (basis%sec(n)%f(1,i), i=1,ntotb) /)
 
 		i1 = i2;
 	end do
@@ -213,7 +212,7 @@
 	!double precision, intent(in) :: wr, delta, lambda, wv
 
 	! local
-	double precision :: g, lamwv
+	double precision :: g, lamwv, w0,wc,wv
 	integer :: i,n1,n2,n3,nnz, Hbnnzm
 
 	! parameters for this job

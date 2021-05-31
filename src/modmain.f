@@ -71,8 +71,7 @@
 	type(cluster), dimension(:), allocatable :: jobs
 
 	type :: parameters
-		integer :: m
-		double precision :: wr, del, lam, wv
+		double precision :: wr, del, lam, wv, wc
 		integer :: ntot, ntotdn, ntotb, ntotup, ntotg
 	end type parameters
 	type(parameters), dimension(:), allocatable :: param
@@ -155,10 +154,9 @@
 	type(Eigensystems) :: eig0
 
 !	type(Ham), allocatable:: Hg
-	type(Ham) :: Hhtc, Hg, Hb ! off-diagonal terms
+	type(Ham) :: Hhtc, Hg, Hb, Hf ! off-diagonal terms
 	!diagonal terms, simple forms, maybe taken as simple arrays... 
 	double precision, dimension(:), allocatable :: Hc,Hs,Ht, Hdv
-	double precision, dimension(:), allocatable :: Vx
 
 	double precision, dimension(:,:,:,:), allocatable :: dmup, dmdn
 
@@ -333,8 +331,6 @@
 	LargeN = .false.
 	ndummy = -1;
 	anev = 1;
-	mode = -1;
-	task = -1;
 	ddiagOK = .true.
 	!--------------------------!
 	!     read from input.in   !
@@ -362,10 +358,6 @@
      .  (scan(trim(block),'#').eq.1)) goto 10
 
 	select case(trim(block))
-
-
-	case('task') 
-	 read(50,*,err=20) task
 
 	case('nstates') 
 	 read(50,*,err=20) nev
@@ -422,7 +414,7 @@
 	! 3: N-1 sym + 1 + 1_D
 	! mode 2,3: n/nsym used for perm sym sites; one site added later for which full up/dn basis states are included, so total becomes given N.
 
-	 	mode = 1;
+!	 	mode = 1;
 	 	nsym = nact;
 	  n = nsym
 	  ndummy=n;
