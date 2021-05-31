@@ -11,22 +11,19 @@
 ! further details in doc.
 
 
-	program chi2
+	program super
 	use modmain
 	use maps, only: getmap, writemap
 	use bases, only: PermSymBasis, writebasis, writebasisf
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-	use correlation, only: tcorr, rwallnodesx
-	use hamiltonian1, only: MakeH1,Ham1Parts,glueHblocks,glueHblocksD
-	use correlationd, only: tcorrd
 	use dmat, only: cdms, rwallnodes, cdms1, dmphot
 	
 	implicit none
 
 	double precision:: tottime, dtau, ed,ew
-	logical :: newm, goforcdms
+	logical :: goforcdms
 	! mpi
 	integer:: ierr, nj
 	integer(kind=MPI_OFFSET_KIND),
@@ -294,12 +291,6 @@
      .      param(ij)%del,param(ij)%lam, param(ij)%wv
 	!...................... basis%pntr ............
 	write(1) basis%pntr(0:m1max+1)
-	!...................... Vx and its coordinates ............
-	write(1) Hg%nnz ! size
-	!write(*,*) Hg%coo1
-	write(1) Hg%coo1 ! coo of Vx (the same as that of Hg)
-	write(1) Hg%coo2 
-	write(1) Vx
 	!...............................................
 	write(1) eig(i)%ntot, eig(i)%n2
 	write(1) eig(i)%eval 
@@ -352,8 +343,6 @@
 	nsize = 0;
 	allocate(val(1))
 	allocate(vec(1))
-	allocate(coo(1))
-	allocate(vx(1))
 
 	do i=0,min(njobs,num_procs)-1
 		write(rank,'(i6.6)') i
@@ -369,22 +358,6 @@
 			write(10) pntr
 			deallocate(pntr)
 			
-			read(1) nnz
-			write(10) nnz
-
-			if(size(coo) /= nnz) then
-				deallocate(coo, vx)
-				allocate(coo(nnz))
-				allocate(vx(nnz))
-			endif
-
-			read(1) coo
-			write(10) coo
-			read(1) coo
-			write(10) coo
-			read(1) vx
-			write(10) vx
-
 			read(1) ntot, nev
 			write(10) ntot, nev
 
@@ -396,12 +369,6 @@
 			endif
 			read(1) val 
 			read(1) vec	
-			!write(*,*)'ntot = ', ntot
-			!write(*,'(a)') 'htc: main: eigenvalues:'
-			!write(*,'(100000f4.1)') val
-			!write(*,'(a)') 'htc: main: eigenvectors:'
-			!write(*,'(100000f4.1)') vec	
-
 			! write to final output file
 			write(10) val 
 			write(10) vec	
@@ -430,485 +397,26 @@
 	return
 	end 	subroutine checktrace
 	!=============================================================	
-	! hopping matrix elements, without vibration case, i.e., mv=0. 
-	subroutine matelem(i,n,m)
-	implicit none
-	integer, intent(in) :: i,n,m
-	double precision, dimension(min(nev,ntotg),2) :: amp
-	integer :: nev1, j,k
-	double precision :: x1,x2
-	
-	nev1 = min(nev,ntotg);
-
-	do j=1,nev1
-		amp(j,1) = sum(eig(i)%evec(1:ntotdn,1) * 
-     .                   eig(i)%evec(1:ntotdn,j))**2
-		amp(j,2) = sum(eig(i)%evec(ntotdn+1:ntotg,1) *
-     .                   eig(i)%evec(ntotdn+1:ntotg,j))**2
-	end do
-
-	open(12,file='matelem.dat',action='write',position='append')
-		! output file data order: LP dn, LP up, all requested excited up=dn
-		write(12,'(2i10,2x,10000f25.15)') n, m,
-     .             amp(1,1), amp(:,2) ! for non-diagonal transitions, both chan give the same amp, just diff sign. 
-	close(12)
-
-	open(12,file='evals.dat',action='write',position='append')
-		write(12,'(10000f25.15)') eig(i)%eval(1:nev1)
-	close(12)
-
-
-
-	if(1==0) then
-	open(13,file='evecs.dat',action='write',position='append')
-	do j=1,nev1
-		!write(13,'(i5,3x,f15.10)')j,eig(i)%eval(j)
-		write(13,'(a,3x,10000f8.3)')'dn:',
-     .  eig(i)%evec(1:ntotdn,1)*eig(i)%evec(1:ntotdn,j)
-		!write(13,'(a,3x,10000f8.3)')'up:',eig(i)%evec(ntotdn+1:ntotg,j)
-	end do
-	write(13,*)'--------------------------'
-	do j=1,nev1
-		!write(13,'(i5,3x,f15.10)')j,eig(i)%eval(j)
-		!write(13,'(a,3x,10000f8.3)')'dn:',eig(i)%evec(1:ntotdn,j)
-		write(13,'(a,3x,10000f8.3)')'up:',
-     .  eig(i)%evec(ntotdn+1:ntotg,1)*eig(i)%evec(ntotdn+1:ntotg,j)
-	end do
-	write(13,*)'==========================='
-
-	close(13)
-
-
-
-	! angles?
-
-	do j=1,nev1
-		x1 = dsqrt(dabs(sum(eig(i)%evec(1:ntotdn,1)*
-     .                  eig(i)%evec(1:ntotdn,1) )));
-		x2 = dsqrt(dabs(sum(eig(i)%evec(1:ntotdn,j)*
-     .                  eig(i)%evec(1:ntotdn,j) )));
-
-		if(dabs(x1*x2) .gt. 1.0d-7) then
-		amp(j,1) = sum(eig(i)%evec(1:ntotdn,1)*
-     .             eig(i)%evec(1:ntotdn,j) )/(x1*x2)
-		else
-		amp(j,1) = 0.0d0
-		endif
-
-		x1 = dsqrt(sum(eig(i)%evec(ntotdn+1:ntotg,1)*
-     .                  eig(i)%evec(ntotdn+1:ntotg,1) ));
-		x2 = dsqrt(sum(eig(i)%evec(ntotdn+1:ntotg,j)*
-     .                  eig(i)%evec(ntotdn+1:ntotg,j) ));
-
-		if(dabs(x1*x2) .gt. 1.0d-7) then
-		amp(j,2) = sum(eig(i)%evec(ntotdn+1:ntotg,1)*
-     .             eig(i)%evec(ntotdn+1:ntotg,j) )/(x1*x2)
-		else
-		amp(j,2) = 0.0d0
-		endif
-    
-	end do
-
-	x1 = 3.141592653589793d0; 
-	open(13,file='theta.dat',action='write',position='append')
-	write(13,'(a,3x,1000f10.3)')'dn:', (dacos(amp(j,1))/x1, j=1,nev1)
-	write(13,'(a,3x,1000f10.3)')'up:', (dacos(amp(j,2))/x1, j=1,nev1)
-	write(13,*)'==========================='
-	close(13)
-
-	open(13,file='cos-theta.dat',action='write',position='append')
-	write(13,'(a,3x,1000f10.3)')'dn:', (amp(j,1), j=1,nev1)
-	write(13,'(a,3x,1000f10.3)')'up:', (amp(j,2), j=1,nev1)
-	write(13,*)'==========================='
-	close(13)
-
-
-	open(13,file='thetaDUP.dat',action='write',position='append')
-	write(13,'(10f10.5)') ((dacos(dabs(amp(j,k)))*180/x1, k=1,2),
-     .       j=2,nev1)
-	close(13)
-
-	endif ! 1==0
-
-	return
-	end 	subroutine matelem
-	!=============================================================	
-
-
-
-
-
-
-
-	!.....................................................
-	! optical absorption from a polariton condensate
-	!.....................................................
-	subroutine absorption(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
-	implicit none
-	integer, intent(in) :: i
-	ddiagOK = .true.
-c	if(m==0) then
-c	 call setm0variables(i,n,mv,newm) ! set init state manually.
-c	 call seteig0(i)
-c	else
-	 ! calc H at N_ex=m to get its LP_0 eigenstate
-	 if(newm) then
-	  call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		!if(mode>1) call Ham1Parts(nsym,m,mv)
-		!newm = .false. because we are going to calc m+1 next anyway.
-	 endif
-	 call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	 call diagonalise(i)
-c	endif
-	! save LP_0 for time evolution
-	call seteig0(i)
-
-	m1max = min(m+1, nsym); 
-	! calc H at N_ex=m+1 for time evolution
-	call HamParts(nsym,m+1,mv)
-	ddiagOK = .false.
-	call MakeHhtc(nsym, ijob, mode)
-
-	!write(6,*)'main: tcorr(..,ntot), ntot = ',ntot
-
-	! calc \xi(0) = a^+ LP_0 state for time evolution
-	! time evolve using H at N_ex=m+1
-	! ...??? ntotg = ntot; ! set to avoid
-	! Hf%ntot is current hilbert space dimension.
-	call tcorr(dt,w1,w2,nt,nw,i,101, Hf%ntot, m) ! Hf = Hhtc in mode 1
-	return
-	end subroutine absorption
-	!.....................................................
-
-
-	!.....................................................
-	! optical emission from a polariton condensate
-	!.....................................................
-	subroutine emission(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
-	implicit none
-	integer, intent(in) :: i
-	ddiagOK = .true.
-	if(m==0) then
-	 write(6,'(a)') "Error: N_ex > 0  for Emission task 102..."
-	 stop
-	endif
-	! calc H at N_ex=m to get its LP_0 eigenstate
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		!if(mode>1) call Ham1Parts(nsym,m,mv)
-		!newm = .false. because we are going to calc m+1 next anyway.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call diagonalise(i)
-
-	! save LP_0 for time evolution
-	call seteig0(i)
-
-	ddiagOK = .false.
-	m1max = min(m-1, nsym);
-	! calc H at N_ex=m-1 for time evolution
-	call HamParts(nsym,m-1,mv)
-	call MakeHhtc(nsym, ijob, mode)
-
-	! calc \xi(0) = a^ LP_0 state for time evolution
-	! time evolve using H at N_ex=m-1
-	call tcorr(dt,w1,w2,nt,nw,i, 102, Hf%ntot, m)
-	return
-	end subroutine emission
-	!.....................................................
-	! density-density response function of the polariton condensate
-	!.....................................................
-	subroutine densityResponse(task)
-	implicit none
-	integer, intent(in) :: task
-	ddiagOK = .false.;
-	! parts of hamiltonian
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		call Ham1Parts(nsym,m,mv)
-		newm = .false.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call MakeH1(nsym, ijob) ! uses Hhtc 
-	! create full hamiltonin
-	call glueHblocksD(nsym, ijob, mv) ! uses H1 and Hhtc
-	! diagonalise
-	call diagonalise(i)
-	write(*,*)'main: density-density response calculaton...'
-	call tcorr(dt,w1,w2,nt,nw,i,task, Hf%ntot, m)
-	return
-	end 	subroutine densityResponse
-	!.....................................................
-	! density-density response function of the polariton condensate
-	!.....................................................
-	subroutine hoppingResponse(task)
-	implicit none
-	integer, intent(in) :: task
-	ddiagOK = .false.
-	! parts of hamiltonian
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		call Ham1Parts(nsym,m,mv)
-		newm = .false.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call MakeH1(nsym, ijob) ! uses Hhtc 
-	! create full hamiltonin
-	call glueHblocksD(nsym, ijob, mv) ! uses H1 and Hhtc
-	! diagonalise
-	call diagonalise(i)
-
-	! Hopping response calculaton...
-	write(*,*)'main: Hopping response calculaton...'
-	! time evolve etc using correlationd module...
-	call tcorrd(dt,w1,w2,nt,nw,i, task)
-
-	return
-	end 	subroutine hoppingResponse
 	!.....................................................
 	! writes output: node=0 combines all output files
 	!.....................................................
 	subroutine writeout(task)
 	implicit none
-	integer, intent(in) :: task
-	select case(task)
-	case(101) ! light absorption by the condensate
-	 call rwallnodesx('temp-t','absorption-t',nt)
-	 call rwallnodesx('temp-w','absorption-w',nw)
-	case(102) ! PL/light emission from the condensate
-	 call rwallnodesx('temp-t','emission-t',nt)
-	 call rwallnodesx('temp-w','emission-w',nw)
-	case(103,104)
-	 if(task == 103) then
-		call rwallnodesx('temp-t','hopping-up-t',nt)
-		call rwallnodesx('temp-w','hopping-up-w',nw)
-	 elseif(task==104) then
-		call rwallnodesx('temp-t','hopping-dn-t',nt)
-		call rwallnodesx('temp-w','hopping-dn-w',nw)
-	 endif
-	case(105,106)
-	 if(task == 105) then
-		call rwallnodesx('temp-t','density-up-t',nt)
-		call rwallnodesx('temp-w','density-up-w',nw)
-	 elseif(task == 106) then
-		call rwallnodesx('temp-t','density-dn-t',nt)
-		call rwallnodesx('temp-w','density-dn-w',nw)
-	 endif
-	case(301,302)
 	 call rwallnodes('dmup',nact)
 	 call rwallnodes('dmdn',nact)
-	end select
 	return
 	end subroutine writeout
-	!.....................................................
-	! response functions calculations	
-	!.....................................................
-	subroutine response(task)
+	!=============================================================	
+
+
+	subroutine getcdms(i, ijob, ij1)
 	implicit none
-	integer, intent(in) :: task
-	select case(task)
-	case(101) ! light absorption by the condensate
-	 call absorption(i) !(i,ijob, n, nsym,m,m1max, mv, newm,chi)
-	case(102) ! PL/light emission from the condensate
-	 call emission(i)
-	case(103,104)
-	 call hoppingresponse(task)
-	case(105,106)
-	 call densityresponse(task)
-	end select
-	return
-	end subroutine response
-
-	!.....................................................
-	! matrix elements for optical absorption from a polariton condensate
-	!.....................................................
-	subroutine absmatelem(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
-	implicit none
-	integer, intent(in) :: i
-	integer :: n1,n2, nev1, i1,i2,p
-	double precision, dimension(nev) :: val
-	double precision :: fac
-	
-	! calc H at N_ex=m to get its LP_0 eigenstate
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		!if(mode>1) call Ham1Parts(nsym,m,mv)
-		!newm = .false. because we are going to calc m+1 next anyway.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call diagonalise(i)
-	! only LP0 state needed, so can set nev=1 above....? and reset back again??
-
-	call seteig0(i)
-
-	!write(6,*) '===========>> '
-	m1max = min(m+1, nsym); ! used in various ham routines...
-	! calc H at N_ex=m+1 and final states
-	call HamParts(nsym,m+1,mv)
-	call MakeHhtc(nsym, ijob, mode)
-	call diagonalise(i)
-
-	! calc diploe matrix elements and write output
-
-	val = 0.0d0;
-	ntot = eig0%ntot;
-	nev1 = min(nev,ntot);
-
-	i1 = 0;
-	do p=0,min(m,nsym); ! nsym=nact in mode=1
-	 fac = dsqrt((m - p + 1)*1.0d0); ! sqrt(n_photon + 1)
-	 i2 = i1 + basis%sec(p)%ntot*basis%sec(nsym-p)%ntot;
-	 do j=1,nev1 ! final states... in Nex+1 space...
-	  val(j)=val(j)+ fac * sum(eig0%evec(i1+1:i2,1) * 
-     .                      eig(i)%evec(i1+1:i2,j) );
-	 end do
-	 i1 = i2;
-	enddo
-
-	open(12,file='absorption.dat',action='write',position='append')
-		! output file data order: n, m, A^0, A^1, ...., A^nev1, Einit^LP_0, E^0, E^1,...,E^nev1
-		write(12,'(2i10,2x,100000f25.15)') n, m, val(1:nev1),
-     .      eig0%eval(1), eig(i)%eval(1:nev1)
-	close(12)
-
-	!write(6,*)'fix sqrt(n_photon) issue above.... '
-
-	return
-	end subroutine absmatelem
-	!.....................................................
-
-
-	!.....................................................
-	! matrix elements for optical emission from a polariton condensate
-	!.....................................................
-	subroutine plmatelem(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
-	implicit none
-	integer, intent(in) :: i
-	integer :: n1,n2, nev1, i1,i2,p
-	double precision, dimension(nev) :: val
-	double precision :: fac
-	type(Eigensystems) :: eig0
-
-	! calc H at N_ex=m to get its LP_0 eigenstate
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		!if(mode>1) call Ham1Parts(nsym,m,mv)
-		!newm = .false. because we are going to calc m+1 next anyway.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call diagonalise(i)
-
-	!save LP_0 at N_ex=m to a new variable eig0
-	if(allocated(eig0%evec)) then
-		deallocate(eig0%evec,eig0%eval)
-	endif
-	n1 = eig(i)%n1;
-	n2 = eig(i)%n2;
-	eig0%ntot = n1;
-	!eig0%n1 = n1; 
-	!eig0%n2 = n2;
-	allocate(eig0%evec(n1,n2), eig0%eval(n2))
-	eig0%evec = eig(i)%evec
-	eig0%eval = eig(i)%eval
-
-	!write(6,*) '===========>> '
-	m1max = min(m-1,nsym); ! or m-1??? ! used in various ham routines...
-
-	! calc H at N_ex=m+1 and final states
-	call HamParts(nsym,m-1,mv)
-	call MakeHhtc(nsym, ijob, mode)
-	call diagonalise(i)
-
-
-	! calc diploe matrix elements and write output
-
-	val = 0.0d0;
-	ntot = eig(i)%ntot;
-	nev1 = min(nev,ntot);
-
-	
-c	do j=1,nev1 ! final states... in Nex+1 space...
-c	 val(j)=val(j)+sum(eig0%evec(1:ntot,1) * 
-c     .                      eig(i)%evec(1:ntot,j) );
-c	end do
-
-	!write(6,'(a,10000f9.4)')'Nex: LP_0 : ',eig0%evec(:,1)
-	!do j=1,nev
-	!	write(6,'(a,10000f7.4)')'Nex-1: LP_j : ',eig(i)%evec(:,j)
-	!end do
-
-	i1 = 0;
-	do p=0,min(m-1,nsym); ! nsym=nact in mode=1
-	 fac = dsqrt((m - p)*1.0d0); ! sqrt(n_photon)
-	 i2 = i1 + basis%sec(p)%ntot*basis%sec(nsym-p)%ntot;
-	 do j=1,nev1 ! final states... in Nex+1 space...
-	  val(j)=val(j)+ fac * sum(eig0%evec(i1+1:i2,1) * 
-     .                      eig(i)%evec(i1+1:i2,j) );
-	 end do
-	 i1 = i2;
-	enddo
-
-
-
-	open(12,file='emission.dat',action='write',position='append')
-		! output file data order: n, m, A^0, A^1, ...., A^nev1, Einit^LP_0, E^0, E^1,...,E^nev1
-		write(12,'(2i10,2x,100000f25.15)') n, m, val(1:nev1),
-     .      eig0%eval(1), eig(i)%eval(1:nev1)
-	close(12)
-
-
-	return
-	end subroutine plmatelem
-	!.....................................................
-	!.....................................................
-	! matrix elements for hopmatelem in a polariton condensate, without vibraation case only.
-	!.....................................................
-	subroutine hopmatelem(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
-	implicit none
-	integer, intent(in) :: i
-	integer :: n1,n2, nev1
-	double precision, dimension(nev) :: val
-
-
-	! parts of hamiltonian
-	if(newm) then
-		call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		call Ham1Parts(nsym,m,mv)
-		newm = .false.
-	endif
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	call MakeH1(nsym, ijob) ! uses Hhtc 
-	! create full hamiltonin
-	call glueHblocksD(nsym, ijob, mv) ! uses H1 and Hhtc
-	! diagonalise
-	call diagonalise(i)
-
-	! hopping matrix elements, both up/down channels.
-	call matelem(i,nact,m)
-
-	return
-	end subroutine hopmatelem
-	!.....................................................
-
-	subroutine getcdms(i, ijob, mode, newm, ij1)
-	implicit none
-	integer, intent(in) :: i, ijob, mode
-	logical, intent(inout) :: newm
+	integer, intent(in) :: i, ijob
 	integer, intent(inout) :: ij1
 
-	! calculate Hamiltonian
-		if(newm) then
+	! first job? calculate Hamiltonian's parts. 
+		if(i==1) then
 			call HamParts(nsym,m,mv)
-			! make up block for the additional site
-			if(mode==2) call Ham1Parts(nsym,m,mv)
-			newm = .false.
 		endif
 	! things need to be done for every job
 	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
@@ -940,37 +448,6 @@ c	end do
 	return
 	end 	subroutine getcdms
 	!.....................................................
-
-	subroutine setm0variables(i,n,mv,newm)
-	implicit none
-	integer, intent(in) :: i,n,mv
-	logical, intent(inout) :: newm
-	
-	write(*,*) 'main: m=0 .... ' 
-	! .or. param(ijob-1)%m==0 testing absorption at m=0 using chi2
-			! allocate space for basis, and calc maps, etc.
-	!---------- called once for a given n,m,mv [all m?]---------
-	call getmap(n,mv) !,ntot) ! ntot output
-	call PermSymBasis(n,mv)
-
-	! set eig etc manually...
-	ntot = 1;
-	ntotb= 0;
-	ntotdn=ntot*(mv+1);
-	ntotup=0;
-	ntotg=ntotdn;
-	if (allocated(eig(i)%eval)) deallocate(eig(i)%eval)
-	if (allocated(eig(i)%evec)) deallocate(eig(i)%evec)
-	allocate(eig(i)%eval(1))
-	allocate(eig(i)%evec(ntotg,1))
-	eig(i)%eval(1) = 0.0d0;
-	eig(i)%evec(:,1) = 0.0d0;
-	eig(i)%evec(1,1) = 1.0d0;
-
-	newm = .true.; ! ? 
-	return
-	end subroutine setm0variables
-
 
 	!.....................................................
 	subroutine seteig0(i)
@@ -1008,4 +485,4 @@ c	end do
 
 
 
-	end program chi2
+	end program super
