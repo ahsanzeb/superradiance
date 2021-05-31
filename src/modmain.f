@@ -18,7 +18,7 @@
 	!integer, parameter :: maxtasks = 100; ! some large numeber
 	!integer, dimension(maxtasks) :: tasks
 
-	integer :: n, mv
+	integer :: n, mv, nph
 	double precision :: wr, delta, lambda, wv ! set in main? fro ith job
 	integer :: ntot 
 	integer :: ntotb 
@@ -307,6 +307,7 @@
 	diagmaxitr = 500
 	n = 2
 	mv = 2
+	nph=10;
 	parameters = .false.
 	memory = 1.00 ; ! 1 GB per node
 	nev = 1;
@@ -363,66 +364,33 @@
 	select case(trim(block))
 
 
-	! task= 100,200 and 300 series for 'ResponseFunction', 
-	! 'MatrixElements', and 'DensityMatrices' calculations....
-
-	! task: 
-	! Response functions: 100 series
-	! 101 abs, 102 emission
-	! 103 hopping up, 104 hopping down
-	! 105 density up, 106 density down
-	! Matrix Elements: 200 series
-	! 201 abs, 202 emission
-	! 203 hopping without vibration
-	! Density Matrices: 300 series
-	! 301 conditional vibrational dms like objects in symmetric space, mode=1
-	! 302 conditional vibrational dms like objects in full space needed for hopping, mode=2
-	! 310 photon reduced dm in the condensate state
-
 	case('task') 
 	 read(50,*,err=20) task
 
 	case('nstates') 
 	 read(50,*,err=20) nev
 
-	case('TimeEvolutionParam')
-		read(50,*,err=20) kappa2, dt, nt, nw, w1,w2, fft
-		kappa2 = kappa2/2.0d0; ! just set it here....
-	case('TimeEvolutionPrintStep')
-		read(50,*,err=20) prntstep
+	case('nph') 
+	 read(50,*,err=20) nph
 
-	case('FixedRhoex') ! used with MatrixElements/ConditionalDensityMatrices
-		read(50,*,err=20) fixrhoex, nex
-	 
 	case('N')
 		read(50,*,err=20) nact !n_original
 		if(nact .le. 1) then
 			stop 'Error(input): Set N to at least two sites.... '
 		endif
-	case('M')
-		read(50,*,err=20) mv
 	case('debug')
 		read(50,*,err=20) debug
 	case('parameters')
 		parameters = .true.
-		read(50,*,err=20) nm, nwr, ndel, nlam, nwv
-		allocate(ms(nm))
+		read(50,*,err=20) nwr, ndel, nlam, nwv
 		allocate(wrs(nwr))
 		allocate(dels(ndel))
 		allocate(lams(nlam))
 		allocate(wvs(nwv))
-		read(50,*,err=20) ms
 		read(50,*,err=20) wrs
 		read(50,*,err=20) dels
 		read(50,*,err=20) lams
 		read(50,*,err=20) wvs
-	case('lambdaD')
-		read(50,*,err=20) lamd
-	case('LargeN')
-		read(50,*,err=20) LargeN, n
-		if(LargeN .and. n .le. 1) then
-			stop 'Error(input): Set Ndummy to at least two sites.... '
-		endif
 	case('DirectSolverSize')
 		read(50,*,err=20) nmaxddiag
 	case('IterSolverMaxIter')
@@ -447,32 +415,6 @@
 	close(50)
 
 
-	! FixedRhoex case overrides the ms(:) array in parameters block
-	if(fixrhoex .and. task > 199) then ! disable fixrhoex for response calculations ??
-	 nm= 1;
-	 deallocate(ms)
-	 allocate(ms(nm))
-	 ms(1) = nex;
-	 write(*,*)'WARNING: FixedRhoex ===> setting Nex = ',nex 
-	endif
-
-	! hopping matrix elements, only without vibrations.
-	! overrides M: mv; and N_lambda, lambda: nlam, lams(:) (parameters block)
-	if(task == 203) then
-	 mv = 0;
-	 nlam=1;
-	 deallocate(lams)
-	 allocate(lams(nlam))
-	 lams = 0.0d0;
-	 if(.not. fixrhoex) then ! override the ms(:) array in parameters block
-	  nm= 2*(nact+1);
-	   deallocate(ms)
-	   allocate(ms(nm))
-	   ms = (/ (i,i=1,nm) /);
-	   write(*,*)'WARNING:======>>> setting Nex = 1:N ::1' 
-		endif
-	endif
-
 
 	! set mode
 	! 1: all N symmetric
@@ -480,44 +422,11 @@
 	! 3: N-1 sym + 1 + 1_D
 	! mode 2,3: n/nsym used for perm sym sites; one site added later for which full up/dn basis states are included, so total becomes given N.
 
-	select case(task)
-	 case(101,102,201,202,301)
 	 	mode = 1;
 	 	nsym = nact;
-	 case(105,106,203,302)
-	 	mode = 2;
-	 	nsym = nact - 1; ! make room for the site explicitly described.
-	  !n = n - 1; ! safety to ensure n <= nact
-	 case(103,104)
-	 	mode = 3;
-	 	nsym = nact - 1; ! make room for the site explicitly described.
-	  !n = n - 1; ! safety to ensure n <= nact
-	  hopresp = .true.;
-	 case default
-	  write(*,*)
-	  write(*,'("Error: task ",A10, " not recognised!")')task
-	  write(*,*)
-	  stop
-	end select
+	  n = nsym
+	  ndummy=n;
 
-	! response calculations need sparse Hf, so never used dense... even if we can in cases where the state is to be calculated for m+1/m-1 (abs/emission)...
-	if(task>100 .and. task < 199) then
-	 	nmaxddiag = 0; ! to always make sparse Hf used in td.
-	 	nev = 1; ! we only need LP state of a given Nex for td.
-	endif
-
-
-
-	! set n [ndummy] 
-	if(.not. LargeN) then
-		n = nsym
-	elseif(n > nsym) then
-			n= nsym
-			write(6,*)'input: given n_dummy > n_sym! reset...'
-	endif
-	! set ndummy global variable so that it can be used in Hamiltonian.f
-	! routines there have local variable named n [which is actually given to them = nsym] so we have to use another global variable... 
-	ndummy=n;
 
 	! parameters block must be given by user
 	if(.not. parameters) then
