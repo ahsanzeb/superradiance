@@ -42,6 +42,8 @@
 	call MPI_COMM_SIZE (MPI_COMM_WORLD, num_procs, ierr)
 
 	if(node==0) 	call timestamp(node) ! time stamp
+	! set mv=2 for 3 states of molecules: G,T,S
+	mv = 2;
 
 	!write(*,*) "Node = ",node," num_procs, ntp = ",num_procs, ntp 
 	! readinput file
@@ -77,57 +79,18 @@
 	!allocate eig
 	allocate(eig(nj))
 
-c	m1max = 0
-c	do i=1,nj
-c		ijob = jobs(node)%i1+i-1
-c		m1max = max(m1max,param(ijob)%m);
-c	enddo
-c	m1max=min(nsym,m1max);
-
 	ij1 = 0;
-	! until its useful to increase m1max, set it to the required m1.	
-	newm = .true. ! new m ?
 	!+++++++++++++++++++++START IJOB LOOP ++++++++++++++++++++++++++
 	do i=1,nj,1
 
 		!write(*,*)'jobs(node)%i1 , i2= ',jobs(node)%i1,jobs(node)%i2
 		if(node==0)write(*,'(a,i5,a,i5)')'Node 0: job ',i,' out of ',nj
 		ijob = jobs(node)%i1+i-1
-		
-		m = param(ijob)%m;
 
-		! set max m1 possible; basis, map, data can be reused for smaller m.
-		m1max=min(nsym,m);
-		!write(6,*)'main: nsym, n, ndummy, Nex = ',nsym, n, ndummy, m
-		!write(6,*)'main: m1max=',m1max
+	  call getcdms(i, ijob, ij1)
 
-	! task: 
-	! Response functions: 100 series
-	! 101 abs, 102 emission
-	! 103 hopping up, 104 hopping down
-	! 105 density up, 106 density down
-	! Matrix Elements: 200 series
-	! 201 abs, 202 emission
-	! 203 hopping without vibration, default N in range [1:2N:1]
-	! Density Matrices: 300 series
-	! 301 conditional vibrational dms like objects in symmetric space, mode=1
-	! 302 conditional vibrational dms like objects in full space needed for hopping, mode=2
-	! 310 photon reduced dm in the condensate state
 
-	! call internal routines to do the job
-	select case(task)
-	case(101) ! light absorption by the condensate
-	 call absorption(i) !(i,ijob, n, nsym,m,m1max, mv, newm,chi)
-	case(102) ! PL/light emission from the condensate
-	 call emission(i)
-	case(301, 302)
-	 call getcdms(i, ijob, mode, newm, ij1)
-	case(303)
 	 !call dmphot()
-	 	stop "main: task 303 dmphot() not available yet.... DO IT!"
-	case default
-		stop "main: task not recongnised....!"
-	end select
 	!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	if(1==1)  then
@@ -135,11 +98,6 @@ c	m1max=min(nsym,m1max);
 	write(6,'(a5x100000f25.15)') "EVALS: ",
      .  	eig(i)%eval(1:min(20,eig(i)%n2))
 	write(*,*)'eig(i)%n2 = ',eig(i)%n2
-	endif
-
-	!newm = setnewm()
-	if(i < nj) then
-		if (param(ijob+1)%m .ne. m ) newm = .true.
 	endif
 
 	end do ! i jobs
@@ -150,11 +108,7 @@ c	m1max=min(nsym,m1max);
 
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
-		!if(writewfs) then
-		!	call iowfcombine(nact)
-		!endif
-		call writeout(task)
-		write(*,*)"chi2: everything done.... " 
+		write(*,*)"Super: everything done.... " 
 		call timestamp(node)
 	endif
 
@@ -198,29 +152,25 @@ c	m1max=min(nsym,m1max);
 	integer :: i,i1,i2,i3,i4,i5
 
 	! total number of jobs
-	njobs = nm * nwr * ndel * nlam * nwv;
+	njobs = nwr * ndel * nlam * nwv;
 	allocate(param(njobs))
 
 	!if(node==0) write(*,*) 'njobs = ',njobs
 
 	i = 0;
-	do i1=1,nm,1
 		do i2=1,nwr,1
 			do i3=1,ndel,1
 				do i4=1,nlam,1
 					do i5=1,nwv,1
 						i = i + 1;
-						param(i)%m = ms(i1)
-						param(i)%wr = wrs(i2)
-						param(i)%del = dels(i3)
-						param(i)%lam = lams(i4)
-						param(i)%wv = wvs(i5)
-						param(i)%lamd = lamd
+						param(i)%wr = wrs(i2) ! omega_R
+						param(i)%del = dels(i3) ! delta for omega_c, photon energy
+						param(i)%lam = lams(i4) ! lam for soc
+						param(i)%wv = wvs(i5) ! wv for omega_T triplet energy
 					end do
 				end do
 			end do
 		end do
-	end do
 
 	return
 	end 	subroutine setparam

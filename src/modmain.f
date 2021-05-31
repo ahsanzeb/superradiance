@@ -18,11 +18,10 @@
 	!integer, parameter :: maxtasks = 100; ! some large numeber
 	!integer, dimension(maxtasks) :: tasks
 
-	integer :: task, mode ! 1=all N sites sym; 2= N-1 sym & 1 site explicit; 3= N-1 sym & 1 & 1_D.
-	integer :: n, m, mv
+	integer :: n, mv
 	double precision :: wr, delta, lambda, wv ! set in main? fro ith job
-	integer :: ntot ! size of Hhtc, old hamiltonian for N permut syn sites.
-	integer :: ntotb ! size of first min(m-1,n) blocks of N permut sym sites.
+	integer :: ntot 
+	integer :: ntotb 
 	integer :: ntotdn, ntotup, ntotg ! sizes of bigger blocks of new full hamiltonian including one additional site explicitly described apart from the rest of N permut sym ones. 
 	!ntotdn: when this new site is down
 	!nntotup: when this new site is down
@@ -73,34 +72,17 @@
 
 	type :: parameters
 		integer :: m
-		double precision :: wr, del, lam, wv, lamd
+		double precision :: wr, del, lam, wv
 		integer :: ntot, ntotdn, ntotb, ntotup, ntotg
 	end type parameters
 	type(parameters), dimension(:), allocatable :: param
 
-	integer :: nm, nwr, ndel, nlam, nwv, nex
-	integer, dimension(:), allocatable :: ms
+	integer :: nwr, ndel, nlam, nwv
 	double precision, dimension(:), allocatable::
      .             wrs, dels, lams, wvs
 	double precision :: lamd, lamd2wv    
 
 
-
-	type :: darkdata
-		integer :: n
-		integer, dimension(:), allocatable :: i
-		double precision, dimension(:), allocatable :: c
-	end type darkdata
-!	type :: darkdata0
-!		integer :: n
-!		integer, dimension(n) :: i
-!		double precision, dimension(n) :: c
-!	end type darkdata0
-	type(darkdata), dimension(:), allocatable :: evecd
-	integer :: ndark
-	integer, dimension(:), allocatable ::darkind
-	integer, dimension(:), allocatable :: dcoefind
-	integer :: ncavity, nexciton
 
 
 	type :: BSectors
@@ -181,37 +163,6 @@
 	double precision, dimension(:,:,:,:), allocatable :: dmup, dmdn
 
 
-	type(Ham) :: Hf, H1, H1b, H1g, Hgup, Hbup
-	double precision, dimension(:), allocatable::H1d,H1v,H1dv,Hvup
-
-	type(Ham) :: Hhop
-	double precision, dimension(:), allocatable:: Hvd, eigd
-
-
-	type :: brightdarkstatesNex1
-		! brightdarkstatesNex1 defined to be used in case Nex = 1
-		! total number of exciton block states coupled to a given photon block state
-		integer :: ntot
-		! absolute indices of these ntot states: nphoton + *
-		integer, dimension(:), allocatable :: indx ! 1:ntot significant
-		! gs:couplings of these ntot states to the photon state
-		! b: bright state; b(i)=gs(i)  so one array is enough
-		double precision, dimension(:), allocatable :: gs !, b ! 1:ntot significant
-		double precision :: geff  ! (sum_i gi^2)^1/2	 = g.sqrt(N) always!
-		! ds: non-orthogoanl dark states constructed by hand
-		! ods: orthogonalised dark states from ds
-		double precision, dimension(:,:), allocatable :: ds !, ods ! 1:ntot,1:ntot-1 significant
-	end type brightdarkstatesNex1
-
-	type(brightdarkstatesNex1), allocatable:: bds(:) ! array elements - for each photon state
-
-
-	double precision, dimension(:,:),allocatable :: Ubdd, HbU,UdHbU ! bright-dark basis transformation matrix, dense
-	double precision, dimension(:,:),allocatable :: Hdark
-	type(Ham) :: Ubd 
-
-
-	integer :: m1max
 	integer, dimension(:), allocatable :: origin
 	integer :: nev ! number of eigenvectors to compute
 
@@ -355,8 +306,7 @@
 	nmaxddiag = 20
 	diagmaxitr = 500
 	n = 2
-	m = 1
-	mv = 5
+	mv = 2
 	parameters = .false.
 	memory = 1.00 ; ! 1 GB per node
 	nev = 1;
