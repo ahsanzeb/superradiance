@@ -20,7 +20,7 @@ LOADLIBES = libarpack_mac.a -llapack
 #LOADLIBES += -lblas -lgfortran -lm
 
 
-SRC = main.f basis.f modmain.f maps.f hamiltonian.f diag.f dm.f
+SRC = main.f basis.f modmain.f maps.f hamiltonian.f diag.f
 
 OBJ = $(SRC:.f=.o)
 
@@ -51,11 +51,11 @@ diag.o: diag.f modmain.o
 	 $(FC) -c $(FFLAGS) diag.f 	
 
 
-dm.o: dm.f modmain.o
-	 $(FC) -c $(FFLAGS) dm.f 
+#dm.o: dm.f modmain.o
+#	 $(FC) -c $(FFLAGS) dm.f 
 
 
-main.o: main.f modmain.o maps.o basis.o hamiltonian.o diag.o dm.o
+main.o: main.f modmain.o maps.o basis.o hamiltonian.o diag.o
 	 $(FC) -c $(FFLAGS) main.f	
 
 clean:

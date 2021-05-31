@@ -18,7 +18,7 @@
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-	use dmat, only: cdms, rwallnodes, cdms1, dmphot
+!	use dmat, only: cdms, rwallnodes, cdms1, dmphot
 	
 	implicit none
 
@@ -287,10 +287,10 @@
 		open(1,file=trim(fname), form="unformatted", action="write",
      .                                      position="append")
 	endif
-	write(1)param(ij)%m,param(ij)%wr,
+	write(1)param(ij)%wr,
      .      param(ij)%del,param(ij)%lam, param(ij)%wv
 	!...................... basis%pntr ............
-	write(1) basis%pntr(0:m1max+1)
+	write(1) basis%pntr
 	!...............................................
 	write(1) eig(i)%ntot, eig(i)%n2
 	write(1) eig(i)%eval 
@@ -350,10 +350,10 @@
 		! read unformatted file
 		open(1,file=trim(fname), form="unformatted", action="read")
 		do ij=1,jobs(i)%njobs
-			read(1) j, rvals
-			write(10) j, rvals
+			read(1) rvals
+			write(10) rvals
 
-			allocate(pntr(0:min(j,n)+1))
+			allocate(pntr(0:n+1))
 			read(1) pntr
 			write(10) pntr
 			deallocate(pntr)
@@ -400,7 +400,7 @@
 	!.....................................................
 	! writes output: node=0 combines all output files
 	!.....................................................
-	subroutine writeout(task)
+	subroutine writeout()
 	implicit none
 	 call rwallnodes('dmup',nact)
 	 call rwallnodes('dmdn',nact)
@@ -424,14 +424,14 @@
 	call diagonalise(i)
 
 !	if(mode==1) then
-	 ! calc dms to free mem or wait for more jobs?
-	 call checkifgoforcdms(nj,i,goforcdms)
-	 if(goforcdms) then
-		njl = i-ij1
-		 call cdms(ij1,njl,n,m,mv,nev)
-		! reset variables for next iteration
-		goforcdms = .false.;
-		ij1 = i;
+!	 ! calc dms to free mem or wait for more jobs?
+!	 call checkifgoforcdms(nj,i,goforcdms)
+!	 if(goforcdms) then
+!		njl = i-ij1
+!		 call cdms(ij1,njl,n,m,mv,nev)
+!		! reset variables for next iteration
+!		goforcdms = .false.;
+!		ij1 = i;
 !	endif
 
 	return
