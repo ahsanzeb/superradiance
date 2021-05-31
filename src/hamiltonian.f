@@ -207,9 +207,9 @@
 
 
 
-	subroutine MakeHhtc(n,ijob,mode)!, wr,delta,lambda,wv)
+	subroutine MakeHhtc(n,ijob)!, wr,delta,lambda,wv)
 	implicit none
-	integer, intent(in) :: n,ijob,mode
+	integer, intent(in) :: n,ijob
 	!double precision, intent(in) :: wr, delta, lambda, wv
 
 	! local
@@ -241,7 +241,8 @@
 
 
 	nnz = Hg%nnz + Hb%nnz ; !+ Hg%ntot ! Hg%ntot for size of diagonal term, Hv+Hd
-	if(mode==1) nnz = nnz + Hg%ntot; ! Hg%ntot for size of diagonal term, Hv+Hd 
+	!if(mode==1) nnz = nnz + Hg%ntot; ! Hg%ntot for size of diagonal term, Hv+Hd 
+	nnz = nnz + Hg%ntot;
 	
 	Hhtc%nnz = nnz;
 	if(allocated(Hhtc%coo1))deallocate(Hhtc%coo1)

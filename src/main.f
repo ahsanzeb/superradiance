@@ -84,7 +84,7 @@
 		if(node==0)write(*,'(a,i5,a,i5)')'Node 0: job ',i,' out of ',nj
 		ijob = jobs(node)%i1+i-1
 
-	  call getcdms(i, ijob, ij1)
+	  call groundstate(i, ijob, ij1)
 
 
 	 !call dmphot()
@@ -409,26 +409,21 @@
 	!=============================================================	
 
 
-	subroutine getcdms(i, ijob, ij1)
+	subroutine groundstate(i, ijob, ij1)
 	implicit none
 	integer, intent(in) :: i, ijob
 	integer, intent(inout) :: ij1
 
 	! first job? calculate Hamiltonian's parts. 
 		if(i==1) then
-			call HamParts(nsym,m,mv)
+			call HamParts(nsym,nph)
 		endif
 	! things need to be done for every job
-	call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	if(mode==2) then
-		call MakeH1(nsym, ijob) ! uses Hhtc 
-		! create full hamiltonin
-		call glueHblocksD(nsym, ijob, mv) ! uses H1 and Hhtc
-	endif
+	call MakeHhtc(nsym, ijob) ! ijob===> sets wr,delta,lambda,wv values
 	! diagonalise
 	call diagonalise(i)
 
-	if(mode==1) then
+!	if(mode==1) then
 	 ! calc dms to free mem or wait for more jobs?
 	 call checkifgoforcdms(nj,i,goforcdms)
 	 if(goforcdms) then
@@ -437,16 +432,10 @@
 		! reset variables for next iteration
 		goforcdms = .false.;
 		ij1 = i;
-	endif
-	elseif(mode==2) then
-	 !call cdms(i,norig+1,m); ! norig because here n might be very small compared to norig
-	 !call cdms1(i, n,m,mv,nev,ij1,njl) ! calc and write dms at each job iteration.
-	 call cdms1(i, nact,m,mv,nev) ! calc and write dms at each job iteration.
-	 ij1 = i; ! not needed?
-	endif
+!	endif
 
 	return
-	end 	subroutine getcdms
+	end 	subroutine groundstate
 	!.....................................................
 
 	!.....................................................
