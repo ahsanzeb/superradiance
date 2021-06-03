@@ -21,7 +21,6 @@
 	integer :: n, mv, nph
 	double precision :: wr, delta, lambda, wv,wc ! set in main? fro ith job
 	integer :: ntot 
-	integer :: ntotb 
 	integer :: nact, nsym
 	
 	logical :: debug
