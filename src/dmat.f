@@ -32,7 +32,7 @@
 	    do p=0,nph; ! photon states
 	     i1 = p*ntotb + j1; ! global index of the basis state with k1 
 	     i2 = p*ntotb + j2; ! global index of the basis state with k2 
-	     do ij=ij1+1,ij1+nj; ! jobs
+	     do ij=1,nj; !ij1+1,ij1+nj; ! jobs
 	      dm(k1,k2,ij,:) =  dm(k1,k2,ij,:) + 
      .                   x2 *eig(ij)%evec(i1,:)*eig(ij)%evec(i2,:)
 	     end do ! ij	
@@ -69,7 +69,7 @@
 	  do i=1,ntotb ! mol blocks
 	   k1i=k1l + i ! global index
 	   k2i=k2l + i
-	   do ij = ij1+1,ij1+nj ! jobs
+	   do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	    ! (...,:) for nev lowest eigenstates
 	    dm(k1,k2,ij,:) = dm(k1,k2,ij,:) + 
      .       eig(ij)%evec(k1i,:)*eig(ij)%evec(k2i,:)

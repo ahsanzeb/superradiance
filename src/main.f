@@ -101,7 +101,9 @@
 	!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	call MPI_FINALIZE(ierr)
 
-	! combine all cdm files written by diff nodes???
+	! combine all dm files written by diff nodes
+	call rwallnodes("dmmol",n,2)
+	call rwallnodes("dmfield",n,nph)
 
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
@@ -428,6 +430,7 @@
 	 call checkifgoforcdms(nj,i,goforcdms)
 	 if(goforcdms) then
 		njl = i-ij1
+		 write(*,*) "ij1, njl = ",ij1, njl
 		 call rdmmol(ij1, njl,n,nph,nev)
 		 call rdmf(ij1, njl,n,nph,nev)
 		! reset variables for next iteration
