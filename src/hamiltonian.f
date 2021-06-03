@@ -73,6 +73,13 @@
 
 		end do
 
+!	write(*,'(1000i5)') Hb%sec(p)%row
+!	write(*,'(1000i5)') Hb%sec(p)%col
+
+!	write(*,'(1000i5)') Hg%sec(p)%row
+!	write(*,'(1000i5)') Hg%sec(p)%col
+
+
 	return
 	end 	subroutine MakeHgbBlock
 	!----------------------------------------------------------
@@ -87,14 +94,17 @@
 	implicit none
 	integer, intent(in) :: n,nph
 	double precision:: x,y
-	integer :: nnz,ntot,i,p,i1,i2,l,q,n0,n0dn,n0up
+	integer :: nnz,ntot,i,p,i1,i2,l,q,n0,n0dn,n0up,j1,j2
 
 
 	l = basis%sec(n)%ntot; ! == number of MOLECULAR states in the block
 	q = basis%sec(n-1)%ntot; ! == number of nnz of hgblock
 	
 	! total nnz
-	nnz = 2*q * (nph+1) !* 2 for co+counter rotating term
+	nnz = 2*q * nph !* 2 for co+counter rotating term;
+	! nph instead of nph+1: 
+	!for missing q terms in co and missing q in counter in p=0 and p=nph blocks.
+	
 	Hg%nnz = nnz
 	! aux arrays to hold data from all p-blocks in coo format
 	if(allocated(Hg%coo1))deallocate(Hg%coo1)
@@ -121,6 +131,7 @@
 
 	! coo format but with global indexing 
 
+	i1 = 0;
 	! p=0 and nph cases dealt with seperatly
 	do p=0,nph ! photons
 	 x = dsqrt(dble(p)); ! a^-
@@ -134,28 +145,33 @@
 
 	 ! counter rotating term: a^+ [total q terms]
 	 if(p<nph) then
-		i1 = p*2*q; i2 = i1 + q; ! *2*q because 2q terms in co+counter.
+		i2 = i1 + q;
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
 		Hg%coo2(i1+1:i2) = n0up + Hg%sec(1)%col;			
-		Hg%coodat(i1+1:i2) = y * Hg%sec(1)%vdat; 
+		Hg%coodat(i1+1:i2) = y * Hg%sec(1)%vdat;
+		i1 = i2;
 	 endif
 		
 	 ! co rotating term: a^- [total q terms]
 	 if(p>0) then
-	  i1 = p*2*q + q; i2 = i1 + q; 
+	  i2 = i1 + q; 
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
 		Hg%coo2(i1+1:i2) = n0dn + Hg%sec(1)%col;	 ! n0dn: one less photon
-		Hg%coodat(i1+1:i2) = x * Hg%sec(1)%vdat; 
+		Hg%coodat(i1+1:i2) = x * Hg%sec(1)%vdat;
+		i1 = i2;
 	 endif
 		
 	 ! SOC: sigma^+ tau^-
-	 i1 = p*q; i2 = i1 + q; 
-	 Hb%coo1(i1+1:i2) = n0 + Hb%sec(1)%row;
-	 Hb%coo2(i1+1:i2) = n0 + Hb%sec(1)%col;		! n0: same photon number
-	 Hb%coodat(i1+1:i2) = Hb%sec(1)%vdat; 
+	 j1 = p*q; j2 = j1 + q; 
+	 Hb%coo1(j1+1:j2) = n0 + Hb%sec(1)%row;
+	 Hb%coo2(j1+1:j2) = n0 + Hb%sec(1)%col;		! n0: same photon number
+	 Hb%coodat(j1+1:j2) = Hb%sec(1)%vdat; 
 
 				
 	end do
+
+!	write(*,'(1000i5)') Hb%coo1
+!	write(*,'(1000i5)') Hb%coo2
 
 	return
 	end 	subroutine MakeHgb
@@ -243,7 +259,12 @@
 	!..............................................
 
 
+
 	nnz = Hg%nnz + Hb%nnz + Hg%ntot; ! +Hg%ntot for size of diagonal term, Hv+Hd 
+
+
+!	write(*,*) "Hg%nnz, Hb%nnz, Hg%ntot, Hhtc%nnz = ", 
+!     . Hg%nnz, Hb%nnz, Hg%ntot, nnz
 	
 	Hhtc%nnz = nnz;
 	if(allocated(Hhtc%coo1))deallocate(Hhtc%coo1)
@@ -259,36 +280,35 @@
 	Hdv = wc*Hc + w0*Hs +  wv*Ht; ! summ arrays, values.
 	! diagonal will be kept seperate
 
-	n1 = 0;
-	n3 = Hg%nnz;
-	n2 = n3;
+!	write(*,'(1000i5)') Hg%coo1
 
-	!write(*,*) '-----   Hg%nnz = ',Hg%nnz
 
 	! Hg first
+	n1 = 0;
+	n3 = Hg%nnz;
+	n2 = n1 + n3;
+!	write(*,*)"Hg: n1,n2,n3 = ", n1,n2,n3
 	Hhtc%coo1(n1+1:n2) = Hg%coo1(1:n3)
 	Hhtc%coo2(n1+1:n2) = Hg%coo2(1:n3)
 	Hhtc%coodat(n1+1:n2) = g * Hg%coodat(1:n3)
 
-!	if (mv > 0) then ! mv=2 for superradiance code: 3 electronic states
-		!write(*,*) 'Hg: n1, n2 = ',n1, n2 
-		n1 = n2;
-		n3 = Hb%nnz; ! Hb%nnz set to spref[= significant no of elements]
-								! Do not reset it to sum of Hb%sec(p)%nnz
-		n2 = n1 + n3;
-		! Hb afterwards
-		Hhtc%coo1(n1+1:n2) = Hb%coo1(1:n3)
-		Hhtc%coo2(n1+1:n2) = Hb%coo2(1:n3)
-		Hhtc%coodat(n1+1:n2) = lamwv * Hb%coodat(1:n3)
-!	endif
 
-	! mode=1 for superradiance code, always.
-!	if(mode==1) then ! make Hf sparse here....
 
+	! Hb afterwards
+	n1 = n2;
+	n3 = Hb%nnz;
+	n2 = n1 + n3;
+!	write(*,*)"Hb: n1,n2,n3 = ", n1,n2,n3
+	Hhtc%coo1(n1+1:n2) = Hb%coo1(1:n3)
+	Hhtc%coo2(n1+1:n2) = Hb%coo2(1:n3)
+	Hhtc%coodat(n1+1:n2) = lamwv * Hb%coodat(1:n3)
+
+
+	! now diagonal terms
 	n1 = n2;
 	n3 = Hg%ntot;
 	n2 = n1 + n3;
-	! now diagonal terms
+!	write(*,*)"Hd: n1,n2,n3 = ", n1,n2,n3
 	Hhtc%coo1(n1+1:n2) = (/ (i,i=1,n3) /)
 	Hhtc%coo2(n1+1:n2) = (/ (i,i=1,n3) /) 
 	Hhtc%coodat(n1+1:n2) = Hdv(1:n3) ! already halved for matvec(), see wc,w0,wt above.
@@ -296,6 +316,11 @@
 	!write(*,'(a,3x,10000f15.10)') 'Hdv = ',Hhtc%coodat(n1+1:n2)
 
 	!write(*,*) 'Hdv: n1, n2 = ',n1, n2 
+
+
+	write(*,'(1000i5)') Hhtc%coo1
+	write(*,'(1000i5)') Hhtc%coo2
+
 
 	!write(*,*)'============ htc =========='
 	

@@ -187,7 +187,7 @@
 		open(1,file='basis.dat', form="unformatted", action="write")
 		do p=0,n		
 			write(1) basis%sec(p)%ntot
-			write(1) basis%sec(p)%P(1:basis%sec(p)%ntot)
+			!write(1) basis%sec(p)%P(1:basis%sec(p)%ntot)
 		enddo
 		close(1)
 	return
