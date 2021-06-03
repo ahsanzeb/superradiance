@@ -423,16 +423,17 @@
 	! diagonalise
 	call diagonalise(i)
 
-!	if(mode==1) then
-!	 ! calc dms to free mem or wait for more jobs?
-!	 call checkifgoforcdms(nj,i,goforcdms)
-!	 if(goforcdms) then
-!		njl = i-ij1
-!		 call cdms(ij1,njl,n,m,mv,nev)
-!		! reset variables for next iteration
-!		goforcdms = .false.;
-!		ij1 = i;
-!	endif
+	 ! calc dms to free mem or wait for more jobs?
+	 call checkifgoforcdms(nj,i,goforcdms)
+	 if(goforcdms) then
+		njl = i-ij1
+		 call rdmmol(ij1, njl,n,nph,nev)
+		 call rdmf(ij1, njl,n,nph,nev)
+		! reset variables for next iteration
+		goforcdms = .false.;
+		ij1 = i;
+	 end if
+
 
 	return
 	end 	subroutine groundstate
