@@ -19,29 +19,10 @@
 	!integer, dimension(maxtasks) :: tasks
 
 	integer :: n, mv, nph
-	double precision :: wr, delta, lambda, wv ! set in main? fro ith job
+	double precision :: wr, delta, lambda, wv,wc ! set in main? fro ith job
 	integer :: ntot 
 	integer :: ntotb 
-	integer :: ntotdn, ntotup, ntotg ! sizes of bigger blocks of new full hamiltonian including one additional site explicitly described apart from the rest of N permut sym ones. 
-	!ntotdn: when this new site is down
-	!nntotup: when this new site is down
-	!ntotg: grand total, size of FULL Hamiltonian
-	integer :: ntotgg ! for Hhop = Hf x Hdbl, Hdbl is doubly occupied site...
-
 	integer :: nact, nsym
-
-	! time evolution to get correlation
-	logical :: td, fft, melem, hopresp, fixrhoex, amelem
-	integer :: chi
-	double precision :: dt,w1,w2, kappa2
-	integer :: nt,nw, prntstep
-
-	! participation ratios
-	logical :: pratios
-	! Nex=1: large N? use only low energy subspace [use a small N~5-10 to build permutation sym basis that make up the low energy space for larger N]
-	logical :: LargeN
-	integer :: ndummy
-	logical :: lcdms ! conditional density matrices ?
 	
 	logical :: debug
 
@@ -306,6 +287,7 @@
 	n = 2
 	mv = 2
 	nph=10;
+	wc = 2.0d0;
 	parameters = .false.
 	memory = 1.00 ; ! 1 GB per node
 	nev = 1;
@@ -313,23 +295,6 @@
 	writecdms = .true.
 	writebmap = .false.
 	onlyenergy = .false.
-	td= .true.; melem= .false.; fixrhoex=.false.;
-	amelem= .false.;
-	lcdms = .false.; fixrhoexdm = .false.; nexdm=1;
-	chi= 1;
-	hopresp = .false.; lamd = 1.0d0;
-	lamd2wv = 0.0d0; 
-	fft=.true.
-	nt = 1000;
-	nw=500;
-	w1=-0.25d0;
-	w2=+2.5d0;
-	dt = 0.01;
-	kappa2=0.05;
-	prntstep = 1000;
-	pratios = .false.
-	LargeN = .false.
-	ndummy = -1;
 	anev = 1;
 	ddiagOK = .true.
 	!--------------------------!
@@ -364,6 +329,9 @@
 
 	case('nph') 
 	 read(50,*,err=20) nph
+
+	case('wc') 
+	 read(50,*,err=20) wc
 
 	case('N')
 		read(50,*,err=20) nact !n_original
@@ -407,17 +375,8 @@
 	close(50)
 
 
-
-	! set mode
-	! 1: all N symmetric
-	! 2: N-1 sym + 1
-	! 3: N-1 sym + 1 + 1_D
-	! mode 2,3: n/nsym used for perm sym sites; one site added later for which full up/dn basis states are included, so total becomes given N.
-
-!	 	mode = 1;
 	 	nsym = nact;
 	  n = nsym
-	  ndummy=n;
 
 
 	! parameters block must be given by user

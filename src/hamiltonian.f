@@ -132,23 +132,23 @@
 	 ! counter rotating term: a^+
 	 if(p<nph) then
 		i1 = p*2*q; i2 = i1 + q; ! *2*q because 2q terms in co+counter.
-		Hg%coo1(i1+1:i2) = n0 + Hg%sec(p)%row;
-		Hg%coo2(i1+1:i2) = n0up + Hg%sec(p)%col;			
-		Hg%coodat(i1+1:i2) = y * Hg%sec(p)%vdat; 
+		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
+		Hg%coo2(i1+1:i2) = n0up + Hg%sec(1)%col;			
+		Hg%coodat(i1+1:i2) = y * Hg%sec(1)%vdat; 
 	 endif
 		
 	 ! co rotating term: a^-
 	 if(p>0) then
 		i1 = i2; i2 = i2 + q; 
-		Hg%coo1(i1+1:i2) = n0 + Hg%sec(p)%row;
-		Hg%coo2(i1+1:i2) = n0dn + Hg%sec(p)%col;	 ! n0dn: one less photon
-		Hg%coodat(i1+1:i2) = x * Hg%sec(p)%vdat; 
+		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
+		Hg%coo2(i1+1:i2) = n0dn + Hg%sec(1)%col;	 ! n0dn: one less photon
+		Hg%coodat(i1+1:i2) = x * Hg%sec(1)%vdat; 
 	 endif
 		
 	 ! SOC: sigma^+ tau^-
-	 Hb%coo1(i1+1:i2) = n0 + Hb%sec(p)%row;
-	 Hb%coo2(i1+1:i2) = n0 + Hb%sec(p)%col;		! n0: same photon number
-	 Hb%coodat(i1+1:i2) = Hb%sec(p)%vdat; 
+	 Hb%coo1(i1+1:i2) = n0 + Hb%sec(1)%row;
+	 Hb%coo2(i1+1:i2) = n0 + Hb%sec(1)%col;		! n0: same photon number
+	 Hb%coodat(i1+1:i2) = Hb%sec(1)%vdat; 
 
 				
 	end do

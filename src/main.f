@@ -164,6 +164,7 @@
 						param(i)%del = dels(i3) ! delta for omega_c, photon energy
 						param(i)%lam = lams(i4) ! lam for soc
 						param(i)%wv = wvs(i5) ! wv for omega_T triplet energy
+						!param(i)%wc = wc
 					end do
 				end do
 			end do
