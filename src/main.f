@@ -18,7 +18,7 @@
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-!	use dmat, only: cdms, rwallnodes, cdms1, dmphot
+	use dmat, only: rwallnodes, rdmmol, rdmf
 	
 	implicit none
 

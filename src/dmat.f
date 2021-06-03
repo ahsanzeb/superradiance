@@ -17,7 +17,7 @@
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
 	double precision,dimension(3,3,nj,nev) :: dm
-	integer :: jj,k1,k2,i1,i2,j1,j2,ij
+	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p
 	double precision :: x1, x2
 	
 	dm = 0.0d0;
@@ -56,7 +56,6 @@
 	integer, intent(in) :: ij1,nj, n,nph, nev 
 	double precision,dimension(nph+1,nph+1,nj,nev) :: dm
 	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij
-	double precision :: 
 	
 	ntotb = basis%sec(n)%ntot; 
 	! size of the molecular block for every photon state
