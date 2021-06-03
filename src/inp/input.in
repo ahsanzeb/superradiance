@@ -4,13 +4,13 @@ nstates ! NumberOfStates
 3
 
 nph
-10
+5
 
 N
 10
 
 parameters   
-5 1 1 1			! nm, nwr, ndel, nlam, nwv
+4 1 1 1			! nm, nwr, ndel, nlam, nwv
 0.5 1.0	1.5 2.0					!wrs
 0.0 						! dels
 1.0						! lams

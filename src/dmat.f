@@ -17,18 +17,19 @@
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
 	double precision,dimension(0:2,0:2,nj,nev) :: dm
-	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p
+	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb
 	double precision :: x1, x2
 	
 	dm = 0.0d0;
-
+	ntotb = basis%sec(n)%ntot; ! size of mol block
+	 
 	 do jj=1,basis%sec(n-1)%ntot; ! N-1 mol state
 	  do k1=0,2; ! target mol states
 	   j1 = map(k1,jj);  ! N mol state
 	   x1 = basis%sec(n-1)%r(k1,jj)
 	   do k2=0,2; ! target mol states
 	    j2 = map(k2,jj);
-	    x2 = x1 * basis%sec(n-1)%r(k1,jj)
+	    x2 = x1 * basis%sec(n-1)%r(k2,jj)
 	    do p=0,nph; ! photon states
 	     i1 = p*ntotb + j1; ! global index of the basis state with k1 
 	     i2 = p*ntotb + j2; ! global index of the basis state with k2 
@@ -93,7 +94,9 @@
 	integer :: thefile
 	integer :: i,ij,j,xj
 	character :: rank*30, fname*100
-	
+	double precision:: tr
+
+	tr = 0.0d0	
 	write(rank,'(i6.6)') node
 	fname = trim(filename)//'-'//trim(rank)
 	! write unformatted file
@@ -105,9 +108,12 @@
 	endif
 	do ij=1,nj
 		do xj=1,nev
+		  tr = 0.0d0
 			do i=1,mv+1
+			  tr = tr + dm(i,i,ij,xj)
 				write(1,*) (dm(i,j,ij,xj), j=1,mv+1)
 			end do
+			write(*,*)"ij, is, trace: ", ij, xj, tr
 		enddo ! xj
 	end do
 	close(1)
