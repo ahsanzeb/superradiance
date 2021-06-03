@@ -101,12 +101,12 @@
 	!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	call MPI_FINALIZE(ierr)
 
-	! combine all dm files written by diff nodes
-	call rwallnodes("dmmol",n,2)
-	call rwallnodes("dmfield",n,nph)
-
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
+	 ! combine all dm files written by diff nodes
+	 call rwallnodes("dmmol",n,2)
+	 call rwallnodes("dmfield",n,nph)
+	 
 		write(*,*)"Super: everything done.... " 
 		call timestamp(node)
 	endif
