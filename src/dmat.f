@@ -54,7 +54,7 @@
 	subroutine rdmf(ij1,nj,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1,nj, n,nph, nev 
-	double precision,dimension(nph+1,nph+1,nj,nev) :: dm
+	double precision,dimension(0:nph,0:nph,nj,nev) :: dm
 	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij
 	
 	ntotb = basis%sec(n)%ntot; 
