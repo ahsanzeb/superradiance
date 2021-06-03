@@ -402,8 +402,8 @@
 	!.....................................................
 	subroutine writeout()
 	implicit none
-	 call rwallnodes('dmup',nact)
-	 call rwallnodes('dmdn',nact)
+	 call rwallnodes('dmmol',nact,2)
+	 call rwallnodes('dmfield',nact,nph)
 	return
 	end subroutine writeout
 	!=============================================================	
@@ -437,40 +437,6 @@
 	return
 	end 	subroutine groundstate
 	!.....................................................
-
-	!.....................................................
-	subroutine seteig0(i)
-	implicit none
-	integer, intent(in) :: i
-	integer :: n1, n2
-	
-	!save LP_0 at N_ex=m to a new variable eig0
-	if(allocated(eig0%evec)) then
-		deallocate(eig0%evec,eig0%eval)
-	endif
-	n1 = eig(i)%n1;
-	n2 = eig(i)%n2;
-	eig0%ntot = n1;
-	eig0%n1 = n1; 
-	eig0%n2 = n2;
-	allocate(eig0%evec(n1,n2), eig0%eval(n2))
-	eig0%evec = eig(i)%evec
-	eig0%eval = eig(i)%eval
-	return
-	end subroutine seteig0
-
-	!.....................................................
-
-
-	!.....................................................
-
-
-	!.....................................................
-
-
-	!.....................................................
-
-
 
 
 
