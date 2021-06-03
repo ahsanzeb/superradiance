@@ -58,10 +58,10 @@
 
 			
 			Hg%sec(p)%row(jj) = i;
-			Hg%sec(p)%col(jj) = j; ! sigma^+ a^-
+			Hg%sec(p)%col(jj) = j; ! sigma^+ [G to S]
 
 			Hb%sec(p)%row(jj) = k;
-			Hb%sec(p)%col(jj) = j; ! sigma^+ tau^-
+			Hb%sec(p)%col(jj) = j; ! sigma^+ tau^- [T to S]
 
 			
 			f0i = basis%sec(n)%f(0,i); 
@@ -94,7 +94,7 @@
 	q = basis%sec(n-1)%ntot; ! == number of nnz of hgblock
 	
 	! total nnz
-	nnz = 2*q * nph !* 2 for co+counter rotating term
+	nnz = 2*q * (nph+1) !* 2 for co+counter rotating term
 	Hg%nnz = nnz
 	! aux arrays to hold data from all p-blocks in coo format
 	if(allocated(Hg%coo1))deallocate(Hg%coo1)
@@ -104,7 +104,10 @@
 	allocate(Hg%coo2(nnz))
 	allocate(Hg%coodat(nnz))
 
+
 	! blocks for soc term
+	nnz = q * (nph + 1)
+	Hb%nnz = nnz
 	if(allocated(Hb%coo1))deallocate(Hb%coo1)
 	if(allocated(Hb%coo2))deallocate(Hb%coo2)
 	if(allocated(Hb%coodat))deallocate(Hb%coodat)
@@ -113,7 +116,7 @@
 	allocate(Hb%coodat(nnz))
 
 
-	ntot = l * nph;
+	ntot = l * (nph+1);
 	Hg%ntot = ntot
 
 	! coo format but with global indexing 
@@ -129,7 +132,7 @@
 	 n0up = (p+1)*l; ! p < nph; 
 	 n0dn = (p-1)*l; ! p > 0
 
-	 ! counter rotating term: a^+
+	 ! counter rotating term: a^+ [total q terms]
 	 if(p<nph) then
 		i1 = p*2*q; i2 = i1 + q; ! *2*q because 2q terms in co+counter.
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
@@ -137,15 +140,16 @@
 		Hg%coodat(i1+1:i2) = y * Hg%sec(1)%vdat; 
 	 endif
 		
-	 ! co rotating term: a^-
+	 ! co rotating term: a^- [total q terms]
 	 if(p>0) then
-		i1 = i2; i2 = i2 + q; 
+	  i1 = p*2*q + q; i2 = i1 + q; 
 		Hg%coo1(i1+1:i2) = n0 + Hg%sec(1)%row;
 		Hg%coo2(i1+1:i2) = n0dn + Hg%sec(1)%col;	 ! n0dn: one less photon
 		Hg%coodat(i1+1:i2) = x * Hg%sec(1)%vdat; 
 	 endif
 		
 	 ! SOC: sigma^+ tau^-
+	 i1 = p*q; i2 = i1 + q; 
 	 Hb%coo1(i1+1:i2) = n0 + Hb%sec(1)%row;
 	 Hb%coo2(i1+1:i2) = n0 + Hb%sec(1)%col;		! n0: same photon number
 	 Hb%coodat(i1+1:i2) = Hb%sec(1)%vdat; 
@@ -239,9 +243,7 @@
 	!..............................................
 
 
-	nnz = Hg%nnz + Hb%nnz ; !+ Hg%ntot ! Hg%ntot for size of diagonal term, Hv+Hd
-	!if(mode==1) nnz = nnz + Hg%ntot; ! Hg%ntot for size of diagonal term, Hv+Hd 
-	nnz = nnz + Hg%ntot;
+	nnz = Hg%nnz + Hb%nnz + Hg%ntot; ! +Hg%ntot for size of diagonal term, Hv+Hd 
 	
 	Hhtc%nnz = nnz;
 	if(allocated(Hhtc%coo1))deallocate(Hhtc%coo1)
