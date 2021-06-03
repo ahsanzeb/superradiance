@@ -318,8 +318,8 @@
 	!write(*,*) 'Hdv: n1, n2 = ',n1, n2 
 
 
-	write(*,'(1000i5)') Hhtc%coo1
-	write(*,'(1000i5)') Hhtc%coo2
+!	write(*,'(1000i5)') Hhtc%coo1
+!	write(*,'(1000i5)') Hhtc%coo2
 
 
 	!write(*,*)'============ htc =========='

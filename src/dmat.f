@@ -16,17 +16,17 @@
 	subroutine rdmmol(ij1, nj,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
-	double precision,dimension(3,3,nj,nev) :: dm
+	double precision,dimension(0:2,0:2,nj,nev) :: dm
 	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p
 	double precision :: x1, x2
 	
 	dm = 0.0d0;
 
 	 do jj=1,basis%sec(n-1)%ntot; ! N-1 mol state
-	  do k1=1,3; ! target mol states
+	  do k1=0,2; ! target mol states
 	   j1 = map(k1,jj);  ! N mol state
 	   x1 = basis%sec(n-1)%r(k1,jj)
-	   do k2=1,3; ! target mol states
+	   do k2=0,2; ! target mol states
 	    j2 = map(k2,jj);
 	    x2 = x1 * basis%sec(n-1)%r(k1,jj)
 	    do p=0,nph; ! photon states
