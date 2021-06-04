@@ -93,10 +93,10 @@ cpick.set_array([])
 
 #****************************************
 # ----------------------------------------------------------------------
-nxmax= 200
-nymax= 150
-xi=-2; xf=4
-yi=-2.5; yf=2.5;
+nxmax= 1000
+nymax= 5
+xi=-10; xf=10
+yi=-1; yf=1;
 
 xvec = np.linspace(xi,xf, nxmax)
 yvec = np.linspace(yi,yf, nymax)
@@ -104,7 +104,7 @@ dp=yvec[1]-yvec[0]; # dp
 ndel=3; # temporarily use delta for nev=3 eigenstates, modify if a set of delta vals
 nds=ndel;
 M=31;
-wrs = np.array([0.5,1.0,1.5,2.0]);
+wrs = np.array([1,2,3,4]); #np.array([1,2,3,4,5,6,7,8,9]);
 nwrs=len(wrs);
 
 ds = np.array([0]); #np.linspace(-2,2, ndel)
@@ -136,9 +136,13 @@ def checkfile(filename):
 checkfile("parameters-f.dat")
 
 
+#fig, grid = plt.subplots(nrows=nwrs, ncols=1)
+#grid[0].plot(xvec,xvec,linewidth=2.0)
+#plt.show()
+#exit()
 
 # ----------------------------------------------------------------------
-files=["n-30/dmfield.dat"]
+files=["n-50/dmfield.dat"]
 # ----------------------------------------------------------------------
 print('reading data files')
 filename=files[0];
@@ -148,6 +152,7 @@ for line in fin.readlines():
 	a.append( [ float (x) for x in line.split() ] )
 a=np.array(a);
 dmdn = a.reshape((nms,nwrs, ndel, M, M))
+fdn=open('px-f.dat','ab')
 # ----------------------------------------------------------------------
 Pxdn = np.zeros((nms,nwrs, nds,nxmax))
 for im in range(nms):
@@ -157,7 +162,34 @@ for im in range(nms):
 			rho=Qobj(dmdn[im,iwr,idel,:,:])
 			W = wigner(rho, xvec, yvec)
 			Pxdn[im,iwr,idel,:] = np.sum(W,axis=0) * dp # integrate over p
+			y=Pxdn[im,iwr,idel,:].reshape((1,nxmax))
+			np.savetxt(fdn,y, fmt='%15.10f', delimiter=' ')
+
+			#grid[iwr].plot(xvec,y,linewidth=2.0)
+
+fdn.close()
+		
 # ----------------------------------------------------------------------
+
+
+
+#plt.savefig('Px-field.pdf', format='pdf', dpi=100)
+
+
+exit()
+
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+#**********************************
+
+
 
 
 def FitSHO(i,j,x,y):

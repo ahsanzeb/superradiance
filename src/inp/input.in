@@ -11,10 +11,10 @@ N
 
 parameters   
 4 1 1 1			! nwr, ndel, nlam, nwv
-0.5 1.0	1.5 2.0					!wrs
+0.05 0.15 1.5 15.0		!wrs
 0.0 						! dels
-1.0						! lams
-1.0 						! wv for omega_triplet; wc = 2.0 default.
+0.0						! lams
+100.0 						! wv for omega_triplet; wc = 2.0 default.
 
 
 

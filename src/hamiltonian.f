@@ -246,7 +246,7 @@
 	! half values needed for diagonal terms:  
 	! *0.5 here for efficieny
 	wc = (param(ijob)%wc)*0.5d0; ! Cavity
-	w0 = (wc+delta)*0.5d0; !Signlet
+	w0 = (param(ijob)%wc+delta)*0.5d0; !Signlet
 	wv = (param(ijob)%wv)*0.5d0; ! triplet
 
 	! Hg has upper (a^+, counter-rotating terms) triangular
