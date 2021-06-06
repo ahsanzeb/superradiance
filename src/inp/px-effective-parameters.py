@@ -142,7 +142,7 @@ checkfile("parameters-f.dat")
 #exit()
 
 # ----------------------------------------------------------------------
-files=["n-50/dmfield.dat"]
+files=["n-30/dmfield.dat"]
 # ----------------------------------------------------------------------
 print('reading data files')
 filename=files[0];

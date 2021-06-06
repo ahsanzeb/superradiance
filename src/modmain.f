@@ -51,7 +51,7 @@
 	type(cluster), dimension(:), allocatable :: jobs
 
 	type :: parameters
-		double precision :: wr, del, lam, wv, wc
+		double precision :: wr, del, lam, wv
 		integer :: ntot, ntotdn, ntotb, ntotup, ntotg
 	end type parameters
 	type(parameters), dimension(:), allocatable :: param

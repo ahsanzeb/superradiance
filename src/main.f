@@ -76,6 +76,8 @@
 	!allocate eig
 	allocate(eig(nj))
 
+	open(114,file="energy.dat",action='write')
+
 	ij1 = 0;
 	!+++++++++++++++++++++START IJOB LOOP ++++++++++++++++++++++++++
 	do i=1,nj,1
@@ -94,7 +96,11 @@
 	! temporary, to write evals. run in serial
 	write(6,'(a5x100000f25.15)') "EVALS: ",
      .  	eig(i)%eval(1:min(20,eig(i)%n2))
-	write(*,*)'eig(i)%n2 = ',eig(i)%n2
+	!write(*,*)'eig(i)%n2 = ',eig(i)%n2
+
+	write(114,'(100000f25.15)') eig(i)%eval
+	!write(*,'(100000f10.3)') eig(i)%evec(:,2)
+
 	endif
 
 	end do ! i jobs
@@ -104,11 +110,14 @@
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
 	 ! combine all dm files written by diff nodes
-	 call rwallnodes("dmmol",n,2)
-	 call rwallnodes("dmfield",n,nph)
-	 
+
+	 !call rwallnodes("dmmol",n,2)
+	 !call rwallnodes("dmfield",n,nph)
+	 close(114)
+
 		write(*,*)"Super: everything done.... " 
 		call timestamp(node)
+
 	endif
 
 !======================================================================
@@ -426,11 +435,12 @@
 	! diagonalise
 	call diagonalise(i)
 
+	return
 	 ! calc dms to free mem or wait for more jobs?
 	 call checkifgoforcdms(nj,i,goforcdms)
 	 if(goforcdms) then
 		njl = i-ij1
-		 write(*,*) "ij1, njl = ",ij1, njl
+		 !write(*,*) "ij1, njl = ",ij1, njl
 		 call rdmmol(ij1, njl,n,nph,nev)
 		 call rdmf(ij1, njl,n,nph,nev)
 		! reset variables for next iteration

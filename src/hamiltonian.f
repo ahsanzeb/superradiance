@@ -208,6 +208,9 @@
 	! molecular block's ntot [the same for all photon numbers]
 	ntotb = basis%sec(n)%ntot; ! == number of MOLECULAR states in the block
 
+	!write(*,'(a,2x,10000i5)') "f(2,:) = ", basis%sec(n)%f(2,:)
+	!write(*,'(a,2x,10000i5)') "f(1,:) = ", basis%sec(n)%f(1,:)
+
 	! coo format but with global indexing 
 	i1 = 0
 	do p=0,nph
@@ -232,7 +235,7 @@
 	!double precision, intent(in) :: wr, delta, lambda, wv
 
 	! local
-	double precision :: g, lamwv, w0,wc,wv
+	double precision :: g, lamwv, w0, wcc, wv
 	integer :: i,n1,n2,n3,nnz, Hbnnzm
 
 	! parameters for this job
@@ -245,9 +248,12 @@
 
 	! half values needed for diagonal terms:  
 	! *0.5 here for efficieny
-	wc = (param(ijob)%wc)*0.5d0; ! Cavity
-	w0 = (param(ijob)%wc+delta)*0.5d0; !Signlet
+	! use wc instead of param(ijob)%wc
+	wcc = (wc)*0.5d0; ! Cavity
+	w0 = (wc+delta)*0.5d0; !Signlet
 	wv = (param(ijob)%wv)*0.5d0; ! triplet
+
+	!write(*,*)"wc, w0, wt = ", 2*wcc, 2*w0, 2*wv
 
 	! Hg has upper (a^+, counter-rotating terms) triangular
 	!      AND lower (a^-, co-rotating terms) triangular elements.
@@ -277,7 +283,7 @@
 	if(allocated(Hdv)) deallocate(Hdv)
 	allocate(Hdv(Hg%ntot))  ! set Hg%ntot first
 
-	Hdv = wc*Hc + w0*Hs +  wv*Ht; ! summ arrays, values.
+	Hdv = wcc*Hc + w0*Hs +  wv*Ht; ! summ arrays, values.
 	! diagonal will be kept seperate
 
 !	write(*,'(1000i5)') Hg%coo1
@@ -335,6 +341,13 @@
 		allocate(Hf%h(n1,n1))
 		call coo2dense(n1, n2, Hhtc%coo1(1:n2),
      .      Hhtc%coo2(1:n2),Hhtc%coodat(1:n2), Hf%h)
+
+	 !write(*,*)'************* H *******************'
+	 !do i=1,n1
+	 ! write(*,'(1000f6.2)') Hf%h(i,:)
+	 !end do
+	 !write(*,*)'************************************'
+
 	else ! iterative diaognalisation
 		!..............................................
 		! change the format to CSR 

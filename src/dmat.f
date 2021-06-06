@@ -108,12 +108,12 @@
 	endif
 	do ij=1,nj
 		do xj=1,nev
-		  tr = 0.0d0
+		  !tr = 0.0d0
 			do i=1,mv+1
-			  tr = tr + dm(i,i,ij,xj)
+			  !tr = tr + dm(i,i,ij,xj)
 				write(1,*) (dm(i,j,ij,xj), j=1,mv+1)
 			end do
-			write(*,*)"ij, is, trace: ", ij, xj, tr
+			!write(*,*)"ij, is, trace: ", ij, xj, tr
 		enddo ! xj
 	end do
 	close(1)
