@@ -435,7 +435,6 @@
 	! diagonalise
 	call diagonalise(i)
 
-	return
 	 ! calc dms to free mem or wait for more jobs?
 	 call checkifgoforcdms(nj,i,goforcdms)
 	 if(goforcdms) then
