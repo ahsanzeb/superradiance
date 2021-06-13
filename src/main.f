@@ -90,7 +90,7 @@
 
 		if(task==310) then
 	   call groundstate(i, ijob, ij1)
-		elseif(taske==101)then
+		elseif(task==101)then
 	   call absorption(i)
 	  else
 	  	 stop "Error(main): task = 101 and 310 only"
@@ -127,9 +127,10 @@
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
 	 ! combine all dm files written by diff nodes
-
-	 call rwallnodes("dmmol",n,2)
-	 call rwallnodes("dmfield",n,nph)
+	 if(task == 310) then
+	  call rwallnodes("dmmol",n,2)
+	  call rwallnodes("dmfield",n,nph)
+	 endif
 	 close(114)
 
 		write(*,*)"Super: everything done.... " 
@@ -479,39 +480,46 @@
 	subroutine absorption(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
 	implicit none
 	integer, intent(in) :: i
-	ddiagOK = .true.
-c	if(m==0) then
-c	 call setm0variables(i,n,mv,newm) ! set init state manually.
-c	 call seteig0(i)
-c	else
-	 ! calc H at N_ex=m to get its LP_0 eigenstate
-	 if(newm) then
-	  call HamParts(nsym,m,mv)
-		! make up block for the additional site
-		!if(mode>1) call Ham1Parts(nsym,m,mv)
-		!newm = .false. because we are going to calc m+1 next anyway.
-	 endif
-	 call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
-	 call diagonalise(i)
-c	endif
-	! save LP_0 for time evolution
+
+	if(i==1) then
+	 call HamParts(nsym,nph)
+	endif
+
+	! things need to be done for every job
+	call MakeHhtc(nsym, ijob) ! ijob===> sets wr,delta,lambda,wv values
+	! diagonalise
+	call diagonalise(i)
+
+	! save the lowest energy eigenstate for time evolution
 	call seteig0(i)
 
-	m1max = min(m+1, nsym); 
-	! calc H at N_ex=m+1 for time evolution
-	call HamParts(nsym,m+1,mv)
-	ddiagOK = .false.
-	call MakeHhtc(nsym, ijob, mode)
+	call tcorr(dt,w1,w2,nt,nw,i,101)
 
-	!write(6,*)'main: tcorr(..,ntot), ntot = ',ntot
-
-	! calc \xi(0) = a^+ LP_0 state for time evolution
-	! time evolve using H at N_ex=m+1
-	! ...??? ntotg = ntot; ! set to avoid
-	! Hf%ntot is current hilbert space dimension.
-	call tcorr(dt,w1,w2,nt,nw,i,101, Hf%ntot, m) ! Hf = Hhtc in mode 1
 	return
 	end subroutine absorption
+	!.....................................................
+
+	!.....................................................
+	subroutine seteig0(i)
+	implicit none
+	integer, intent(in) :: i
+	integer :: n1, n2
+	
+	!save LP_0 at N_ex=m to a new variable eig0
+	if(allocated(eig0%evec)) then
+		deallocate(eig0%evec,eig0%eval)
+	endif
+	n1 = eig(i)%n1;
+	n2 = eig(i)%n2;
+	eig0%ntot = n1;
+	eig0%n1 = n1; 
+	eig0%n2 = n2;
+	allocate(eig0%evec(n1,n2), eig0%eval(n2))
+	eig0%evec = eig(i)%evec
+	eig0%eval = eig(i)%eval
+	return
+	end subroutine seteig0
+
 	!.....................................................
 
 

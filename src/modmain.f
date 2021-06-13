@@ -20,7 +20,7 @@
 	integer :: task
 	integer :: n, mv, nph
 	double precision :: wr, delta, lambda, wv,wc ! set in main? fro ith job
-	integer :: ntot 
+	integer :: ntot, ntotb
 	integer :: nact, nsym
 
 	! time evolution to get correlation

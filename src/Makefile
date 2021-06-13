@@ -13,7 +13,7 @@
 
 FC 	= mpif90  #gfortran
 FFLAGS= -O3 -g -fbounds-check -fbacktrace
-LOADLIBES = libarpack_mac.a -llapack
+LOADLIBES = libarpack_mac.a fftlib.a -llapack
 
 # to link statically we might need something like: 
 #FFLAGS += -static

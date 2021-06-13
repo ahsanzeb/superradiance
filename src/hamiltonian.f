@@ -94,7 +94,7 @@
 	implicit none
 	integer, intent(in) :: n,nph
 	double precision:: x,y
-	integer :: nnz,ntot,i,p,i1,i2,l,q,n0,n0dn,n0up,j1,j2
+	integer :: nnz, i,p,i1,i2,l,q,n0,n0dn,n0up,j1,j2
 
 
 	l = basis%sec(n)%ntot; ! == number of MOLECULAR states in the block
@@ -191,9 +191,10 @@
 	implicit none
 	integer, intent(in) :: n, nph
 
-	integer :: i,i1,i2,ntot,p, ntotb
+	integer :: i,i1,i2,p !, ntot,ntotb
 
-	ntot = Hg%ntot; ! set Hg%ntot first
+	!ntot = Hg%ntot; ! set Hg%ntot first
+	! ntot already set in MakeHgb alongwith Hg%ntot
 
 	if(allocated(Hc)) deallocate(Hc)
 	allocate(Hc(ntot)) 

@@ -1,41 +1,37 @@
 
 	module correlation
 	use modmain, only: Hf, eig, kappa2,prntstep,fft,
-     .								ntotdn, ntotg, task, mode, eig0,
-     .              basis, nsym
+     .							 task, eig0, basis, nsym, nph, ntotb, ntot
 	implicit none
 
 	public :: tcorr
 	private :: rk4step, yprime
-	private :: makepsi0up, makepsi0dn
 	private :: FourierT, writecorrt, writecorrw
 		
 	double precision :: dt, dth, dt6, twopi,kappa2r
 	double complex :: iotam, phase
 	double complex, dimension(:), allocatable:: corrt,corrw
 	double precision, dimension(:), allocatable:: ws, ts,wss
-	integer:: nt, nw, m
+	integer:: nt, nw
 	character :: fname*100
 
 	double complex,dimension(:), allocatable :: psi0, psit
 	double precision, dimension(:), allocatable ::psitnorm
-	integer :: ij, ntot
+	integer :: ij
 	
 	contains
 ! Ahsan Zeb, 04 Nov, 2019, modified from poalriton code routine tcorr.f
 ! This subroutine takes the hamiltonian, initial state and other parameters, evolve the state and compute the two time correlation that is given as output.
 
-	subroutine tcorr(dt0,w1,w2,nt0,nw0,ij0, task, ntotl, m) 
+	subroutine tcorr(dt0,w1,w2,nt0,nw0,ij0, task) 
 	implicit none
 	double precision, intent(in) :: dt0,w1,w2
 	integer, intent(in) :: nt0,nw0, ij0
-	integer, intent(in):: task, ntotl, m ! m init state
+	integer, intent(in):: task
 	! local
 	integer :: i, nsize
 	double precision:: dw
 	double complex :: e0dt
-
-	ntot = ntotl; ! ntot of this module, not of modmain.
 	
 	dt = dt0;	
 	nt = nt0;
@@ -88,13 +84,9 @@
 	
 	! construct init state for time evolution
 	if(task == 101) then 	!absorption...
-		call makepsi0ad(ij0, ntot, m)
-	elseif(task == 102) then 	! emission... 
-		call makepsi0a(ij0, ntot, m)
-	elseif(task==105) then ! density-density up
-		call makepsi0up(ij0) ! exciton projector |up><up| for hopping.... 
-	elseif(task==106) then ! density-density down
-		call makepsi0dn(ij0) ! exciton projector |dn><dn| for hopping.... 
+		call makepsi0ad(ij0)
+	else
+		stop "correlation: task =101 only"
 	endif
 
 	write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
@@ -187,21 +179,21 @@
 	
 	! add a photon to the given state to make psi0 for evolution
 	! fully inside the sym space... no projection on non-sym space... 
-	subroutine makepsi0ad(ijob,ntot, m)
+	subroutine makepsi0ad(ijob)
 	implicit none
-	integer, intent(in) :: ijob, ntot, m ! m init state
-	integer :: i1,i2,p
+	integer, intent(in) :: ijob
+	integer :: i1,i2,p, i3
 	double precision :: fac
 
 	psi0 = 0.0d0
 	! psi0 is complex, set real part.
 	! add/create a photon in init state
-
 	i1 = 0;
-	do p=0,min(m,nsym); ! nsym=nact in mode=1; m init state; init p sectors
-	 fac = dsqrt((m - p + 1)*1.0d0); ! sqrt(n_photon + 1) init state
-	 i2 = i1 + basis%sec(p)%ntot*basis%sec(nsym-p)%ntot;
-	 psi0(i1+1:i2) = fac * eig0%evec(i1+1:i2,1); ! psi0 is complex, set real part.
+	do p=0,nph-1; 
+	 fac = dsqrt(dble(p+1)); ! sqrt(n_photon + 1) init state
+	 i2 = i1 + ntotb;
+	 i3 = i2 + ntotb; ! shift by ntotb, i.e., one block
+	 psi0(i2+1:i3) = fac * eig0%evec(i1+1:i2,1); ! psi0 is complex, set real part.
 	 i1 = i2;
 	enddo
 
@@ -210,49 +202,6 @@
 	end 	subroutine makepsi0ad
 	!----------------------------------------
 
-	! remove a photon from the given state to make psi0 for evolution
-	! fully inside the sym space... no projection on non-sym space... 
-	subroutine makepsi0a(ijob, ntot, m)
-	implicit none
-	integer, intent(in) :: ijob, ntot, m ! m init state
-	integer :: i1,i2,p
-	double precision :: fac
-	psi0 = 0.0d0
-	! psi0 is complex, set real part.
-	!dcmplx(eig(ijob)%evec(:,1), 0.0d0); 
-
-	! remove/annihilate a photon from init state
-	i1 = 0;
-	do p=0,min(m-1,nsym); ! nsym=nact in mode=1; final p sectors
-	 fac = dsqrt((m - p)*1.0d0); ! sqrt(n_photon) init state
-	 i2 = i1 + basis%sec(p)%ntot*basis%sec(nsym-p)%ntot;
-	 psi0(i1+1:i2) = fac * eig0%evec(i1+1:i2,1); ! psi0 is complex, set real part.
-	 i1 = i2;
-	enddo
-
-	return
-	end 	subroutine makepsi0a
-	!----------------------------------------
-
-
-	! add an exciton (at site 1) to a given state to make psi0 for evolution
-	! this rutine uses the projection on the symmetric subspace.... non-sy space is not included,,, in principle, incorrect, but, Hf is block diagonal in the two subspaces so we only miss the non-sym part, no other influence on the respnse of the sym space...
-
-	subroutine makepsi0up(ijob) ! exciton projector... for hopping...
-	implicit none
-	integer,intent(in) :: ijob
-	psi0 = eig(ijob)%evec(:,1);
-	psi0(1:ntotdn) = 0.0d0;
-	return
-	end 	subroutine makepsi0up
-	!----------------------------------------
-	subroutine makepsi0dn(ijob) ! exciton projector... for hopping...
-	implicit none
-	integer,intent(in) :: ijob
-	psi0 = eig(ijob)%evec(:,1);
-	psi0(ntotdn+1:ntotg) = 0.0d0;
-	return
-	end 	subroutine makepsi0dn
 	!----------------------------------------
 	subroutine FourierT()
 	!use fftpack5
