@@ -17,12 +17,18 @@
 	! tasks(maxtasks)
 	!integer, parameter :: maxtasks = 100; ! some large numeber
 	!integer, dimension(maxtasks) :: tasks
-
+	integer :: task
 	integer :: n, mv, nph
 	double precision :: wr, delta, lambda, wv,wc ! set in main? fro ith job
 	integer :: ntot 
 	integer :: nact, nsym
-	
+
+	! time evolution to get correlation
+	logical :: td, fft !, melem, hopresp, fixrhoex, amelem
+	integer :: chi
+	double precision :: dt,w1,w2, kappa2
+	integer :: nt,nw, prntstep
+
 	logical :: debug
 
 	logical :: ddiagOK ! direct diagonalisation OK? calc and saves wavefunctions... 
@@ -298,7 +304,20 @@
 	writebmap = .false.
 	onlyenergy = .false.
 	anev = 1;
-	ddiagOK = .true.
+	ddiagOK = .true.;
+
+	td= .true.;
+	chi= 1;
+	fft=.true.
+	nt = 1000;
+	nw=500;
+	w1=-0.25d0;
+	w2=+2.5d0;
+	dt = 0.01;
+	kappa2=0.05;
+	prntstep = 1000;
+
+
 	!--------------------------!
 	!     read from input.in   !
 	!--------------------------!
@@ -326,8 +345,23 @@
 
 	select case(trim(block))
 
+	! task: 
+	! Response functions: 100 series
+	! 101 abs
+	! Density Matrices: 300 series
+	! 310 photon reduced dm
+
+	case('task') 
+	 read(50,*,err=20) task
+
 	case('nstates') 
 	 read(50,*,err=20) nev
+
+	case('TimeEvolutionParam')
+		read(50,*,err=20) kappa2, dt, nt, nw, w1,w2, fft
+		kappa2 = kappa2/2.0d0; ! just set it here....
+	case('TimeEvolutionPrintStep')
+		read(50,*,err=20) prntstep
 
 	case('nph') 
 	 read(50,*,err=20) nph

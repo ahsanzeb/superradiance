@@ -19,6 +19,7 @@
 	use diag, only: diagonalise
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, parityeig, setparity
+	use correlation, only: tcorr, rwallnodesx
 	
 	implicit none
 
@@ -87,7 +88,14 @@
 		if(node==0)write(*,'(a,i5,a,i5)')'Node 0: job ',i,' out of ',nj
 		ijob = jobs(node)%i1+i-1
 
-	  call groundstate(i, ijob, ij1)
+		if(task==310) then
+	   call groundstate(i, ijob, ij1)
+		elseif(taske==101)then
+	   call absorption(i)
+	  else
+	  	 stop "Error(main): task = 101 and 310 only"
+		endif
+		
 	  if(i==1) then
 	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"
 	   write(*,'(a,3x,2i10)')"ntotb, ntot = ",Hg%ntot/nph, Hg%ntot
@@ -462,6 +470,48 @@
 
 	return
 	end 	subroutine groundstate
+	!.....................................................
+
+
+	!.....................................................
+	! optical absorption from a polariton condensate
+	!.....................................................
+	subroutine absorption(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
+	implicit none
+	integer, intent(in) :: i
+	ddiagOK = .true.
+c	if(m==0) then
+c	 call setm0variables(i,n,mv,newm) ! set init state manually.
+c	 call seteig0(i)
+c	else
+	 ! calc H at N_ex=m to get its LP_0 eigenstate
+	 if(newm) then
+	  call HamParts(nsym,m,mv)
+		! make up block for the additional site
+		!if(mode>1) call Ham1Parts(nsym,m,mv)
+		!newm = .false. because we are going to calc m+1 next anyway.
+	 endif
+	 call MakeHhtc(nsym, ijob, mode) ! ijob===> sets wr,delta,lambda,wv values
+	 call diagonalise(i)
+c	endif
+	! save LP_0 for time evolution
+	call seteig0(i)
+
+	m1max = min(m+1, nsym); 
+	! calc H at N_ex=m+1 for time evolution
+	call HamParts(nsym,m+1,mv)
+	ddiagOK = .false.
+	call MakeHhtc(nsym, ijob, mode)
+
+	!write(6,*)'main: tcorr(..,ntot), ntot = ',ntot
+
+	! calc \xi(0) = a^+ LP_0 state for time evolution
+	! time evolve using H at N_ex=m+1
+	! ...??? ntotg = ntot; ! set to avoid
+	! Hf%ntot is current hilbert space dimension.
+	call tcorr(dt,w1,w2,nt,nw,i,101, Hf%ntot, m) ! Hf = Hhtc in mode 1
+	return
+	end subroutine absorption
 	!.....................................................
 
 
