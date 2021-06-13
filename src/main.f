@@ -18,7 +18,7 @@
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-	use dmat, only: rwallnodes, rdmmol, rdmf
+	use dmat, only: rwallnodes, rdmmol, rdmf, parityeig, setparity
 	
 	implicit none
 
@@ -65,6 +65,7 @@
 	!---------- called once for a given n,mv ---------
 	call getmap(n,mv) !,ntot) ! ntot output
 	call PermSymBasis(n,mv)
+	call parityeig(n,nph)  ! build parity eigenstates using basis information.
 
 	call setparam()
 	
@@ -87,6 +88,11 @@
 		ijob = jobs(node)%i1+i-1
 
 	  call groundstate(i, ijob, ij1)
+	  if(i==1) then
+	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"
+	   write(*,'(a,3x,2i10)')"ntotb, ntot = ",Hg%ntot/nph, Hg%ntot
+	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"  
+	  endif
 
 
 	 !call dmphot()
@@ -94,8 +100,8 @@
 
 	if(1==1)  then
 	! temporary, to write evals. run in serial
-	write(6,'(a5x100000f25.15)') "EVALS: ",
-     .  	eig(i)%eval(1:min(20,eig(i)%n2))
+	!write(6,'(a5x100000f25.15)') "EVALS: ",
+  !   .  	eig(i)%eval(1:min(20,eig(i)%n2))
 	!write(*,*)'eig(i)%n2 = ',eig(i)%n2
 
 	write(114,'(100000f25.15)') eig(i)%eval
@@ -104,6 +110,9 @@
 	endif
 
 	end do ! i jobs
+
+
+	
 	!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	call MPI_FINALIZE(ierr)
 
@@ -111,8 +120,8 @@
 	if(node==0) then
 	 ! combine all dm files written by diff nodes
 
-	 !call rwallnodes("dmmol",n,2)
-	 !call rwallnodes("dmfield",n,nph)
+	 call rwallnodes("dmmol",n,2)
+	 call rwallnodes("dmfield",n,nph)
 	 close(114)
 
 		write(*,*)"Super: everything done.... " 
@@ -437,8 +446,12 @@
 
 	 ! calc dms to free mem or wait for more jobs?
 	 call checkifgoforcdms(nj,i,goforcdms)
+
+	 !write(*,*)"i, goforcdms = ",i, goforcdms
+
 	 if(goforcdms) then
 		njl = i-ij1
+		 call setparity(ij1, njl,nev) ! calc and prints parities of all nev states for all njl jobs
 		 !write(*,*) "ij1, njl = ",ij1, njl
 		 call rdmmol(ij1, njl,n,nph,nev)
 		 call rdmf(ij1, njl,n,nph,nev)
@@ -446,7 +459,6 @@
 		goforcdms = .false.;
 		ij1 = i;
 	 end if
-
 
 	return
 	end 	subroutine groundstate

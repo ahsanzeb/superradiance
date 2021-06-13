@@ -4,7 +4,7 @@
 	use modmain
 	implicit none
 
-	public :: rdmmol, rdmf, rwallnodes
+	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
 	private :: writeatnode
 	contains
 
@@ -33,15 +33,15 @@
 	    do p=0,nph; ! photon states
 	     i1 = p*ntotb + j1; ! global index of the basis state with k1 
 	     i2 = p*ntotb + j2; ! global index of the basis state with k2 
-	     do ij=1,nj; !ij1+1,ij1+nj; ! jobs
+	     do ij=1,nj! ij1+1,ij1+nj; ! jobs
 	      dm(k1,k2,ij,:) =  dm(k1,k2,ij,:) + 
-     .                   x2 *eig(ij)%evec(i1,:)*eig(ij)%evec(i2,:)
+     .          x2 *eig(ij1+ij)%evec(i1,:)*eig(ij1+ij)%evec(i2,:)
 	     end do ! ij	
 	    end do ! p 
 	   end do ! k2
 	  end do ! k1
 	 end do ! jj
-
+	
 	! write output files at each node
 	call writeatnode(ij1,nj,2,dm,'dmmol')
 
@@ -73,7 +73,7 @@
 	   do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	    ! (...,:) for nev lowest eigenstates
 	    dm(k1,k2,ij,:) = dm(k1,k2,ij,:) + 
-     .       eig(ij)%evec(k1i,:)*eig(ij)%evec(k2i,:)
+     .       eig(ij1+ij)%evec(k1i,:)*eig(ij1+ij)%evec(k2i,:)
 	   end do! ij
 	  end do !i
 	 end do ! k2
@@ -179,6 +179,7 @@
 				write(1,*) (dm(i,j,ij,xj), j=1,mv+1)
 			end do
 		end do
+		!write(*,'(1000f10.5)') (dm(1,j,ij,1), j=1,mv+1)
 	end do
 	close(1)
 
@@ -187,7 +188,7 @@
 !------------------------------------------------------------------
 
 	
-	subroutine symmetrise(l,a)
+	subroutine symmetrise(l,a) ! set lower triangular equal to the upper triangular.
 	implicit none
 	integer, intent(in) :: l
 	double precision, dimension(l,l), intent(inout) :: a
@@ -200,6 +201,126 @@
 	return
 	end 	subroutine symmetrise
 !------------------------------------------------------------------
+
+	!--------------------------------------------------------------------
+	! check the parity of the eigenstates: w.r.t total number of excitations
+	!--------------------------------------------------------------------
+	subroutine parity(ij1, nj,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj,n,nph,nev
+	double precision, dimension(nj,nev) :: dm
+	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb,i, par, nx
+	double precision :: x1, x2
+	
+	dm = 0.0d0;
+	ntotb = basis%sec(n)%ntot; ! size of mol block
+	 
+	 do i=1,basis%sec(n)%ntot; ! N-1 mol state
+	  nx = basis%sec(n)%f(1,i) + basis%sec(n)%f(2,i); ! number of excitons, S+T
+	  do p=0,nph; ! photon states
+	   i1 = p*ntotb + i; ! global index of the basis state
+		 par = mod(nx + p,2)	   
+	   do ij=1,nj! ij1+1,ij1+nj; ! jobs
+	     dm(ij,:) = dm(ij,:) + par*dabs(eig(ij1+ij)%evec(i1,:))**2
+	   end do ! ij	
+	  end do ! p 
+	 end do ! jj
+
+	
+	write(*,'(a)') "Parities of eigenstates: "
+	write(*,'(a)') "ijob, parities: "
+	do ij=1,nj
+	 write(*,'(i5,3x,1000f8.2)') ij, dm(ij,:)
+	end do
+	
+	return
+	end subroutine parity
+
+!------------------------------------------------------------------
+
+	!--------------------------------------------------------------------
+	! build the parity eigenstates
+	!--------------------------------------------------------------------
+	subroutine parityeig(n,nph) ! eigp global in modmain.
+	implicit none
+	integer, intent(in) :: n,nph
+	integer :: ntot, ntotb, i,nx,par,i1, p
+
+	ntotb = basis%sec(n)%ntot; ! size of mol block
+	ntot = ntotb * (nph + 1); ! size of our full space.
+	if(allocated(eigp)) deallocate(eigp)
+	allocate(eigp(ntot,2))
+	eigp = 0.0d0
+
+	! build parity eigenstates eigp:
+	 do i=1,basis%sec(n)%ntot; ! N-1 mol state
+	  nx = basis%sec(n)%f(1,i) + basis%sec(n)%f(2,i); ! number of excitons, S+T
+	  do p=0,nph; ! photon states
+	   i1 = p*ntotb + i; ! global index of the basis state
+		 par = mod(nx + p,2)	   
+		 if(par == 0) then ! even
+	     eigp(i1,2) = 1.0d0;
+		 else ! odd
+	     eigp(i1,1) = 1.0d0; 
+		 endif
+	  end do ! p 
+	 end do ! i
+
+	return
+	end subroutine parityeig
+!------------------------------------------------------------------
+
+
+	!--------------------------------------------------------------------
+	! fix the parity of the energy eigenstates by projecting onto 
+	! even or odd parity sectors and normalising. 
+	!--------------------------------------------------------------------
+	subroutine setparity(ij1, nj, nev) ! eigp global in modmain.
+	implicit none
+	integer, intent(in) :: ij1, nj, nev
+	integer :: ij, is
+	double precision :: w1, w2, norm
+	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
+
+
+	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
+	! the higher eigenstates are sorted according to their larger parity component.
+	do ij=1,nj
+	 do is=1,nev
+	 	proj = 0.0d0;
+	  proj(:,1) = eigp(:,1) * eig(ij1+ij)%evec(:,is);
+	  proj(:,2) = eigp(:,2) * eig(ij1+ij)%evec(:,is);
+		w1 = sum(dabs(proj(:,1))**2); ! weight on odd
+		w2 = sum(dabs(proj(:,2))**2); ! weight on even
+	  if(w1 >= w2 .or. is==2) then ! set to odd
+	   norm = 1.0d0/dsqrt(w1);
+	   eig(ij1+ij)%evec(:,is) = norm * proj(:,1);
+	   !write(*,*) "Odd: is=",is
+	   if (w1==w2) then
+	    write(*,*)"Warning(dmat): W1 = W2"
+	   endif
+	  elseif(w2 > w1 .or. is==1)then !if(w2 > w1) then ! set to even
+	   !write(*,*) "Even: is=",is
+	   norm = 1.0d0/dsqrt(w2);
+	   eig(ij1+ij)%evec(:,is) = norm * proj(:,2);
+	  endif
+
+	 end do ! is
+	end do ! ij
+
+!"Warning(dmat): W1 = W2":
+! two states, one this one and one another one later or before this, would both be assigned to the same parity if exactly equal wt (w1,w2: double precision, a one digit difference is enough to eliminate this issue) in either sector.
+	    ! practically less likely but still there is a chance that this happens.
+
+	return
+	end subroutine setparity
+!------------------------------------------------------------------
+
+
+
+
+
+
 
 
 

@@ -133,6 +133,9 @@
 
 	type(Eigensystems) :: eig0
 
+	double precision, dimension(:,:), allocatable :: eigp ! parity eigenstates
+
+	
 !	type(Ham), allocatable:: Hg
 	type(Ham) :: Hhtc, Hg, Hb, Hf ! off-diagonal terms
 	!diagonal terms, simple forms, maybe taken as simple arrays... 
