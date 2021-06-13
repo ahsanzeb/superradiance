@@ -126,11 +126,10 @@
 
 	! read files	written by all nodes and write a single file.
 	if(node==0) then
-	 ! combine all dm files written by diff nodes
-	 if(task == 310) then
-	  call rwallnodes("dmmol",n,2)
-	  call rwallnodes("dmfield",n,nph)
-	 endif
+	 ! task 310: combine all dm files written by diff nodes
+	 ! task 101: combine absorption files
+	 call writeout(task)
+	 
 	 close(114)
 
 		write(*,*)"Super: everything done.... " 
@@ -427,17 +426,6 @@
 	return
 	end 	subroutine checktrace
 	!=============================================================	
-	!.....................................................
-	! writes output: node=0 combines all output files
-	!.....................................................
-	subroutine writeout()
-	implicit none
-	 call rwallnodes('dmmol',nact,2)
-	 call rwallnodes('dmfield',nact,nph)
-	return
-	end subroutine writeout
-	!=============================================================	
-
 
 	subroutine groundstate(i, ijob, ij1)
 	implicit none
@@ -522,6 +510,22 @@
 
 	!.....................................................
 
+	!.....................................................
+	! writes output: node=0 combines all output files
+	!.....................................................
+	subroutine writeout(task)
+	implicit none
+	integer, intent(in) :: task
+	select case(task)
+	case(101) ! light absorption by the condensate
+	 call rwallnodesx('temp-t','absorption-t',nt)
+	 call rwallnodesx('temp-w','absorption-w',nw)
+	case(310)
+	  call rwallnodes("dmmol",n,2)
+	  call rwallnodes("dmfield",n,nph)
+	end select
+	return
+	end subroutine writeout
 
 
 	end program super
