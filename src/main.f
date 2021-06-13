@@ -91,7 +91,7 @@
 		if(task==310) then
 	   call groundstate(i, ijob, ij1)
 		elseif(task==101)then
-	   call absorption(i)
+	   call absorption(i, ijob)
 	  else
 	  	 stop "Error(main): task = 101 and 310 only"
 		endif
@@ -477,9 +477,9 @@
 	!.....................................................
 	! optical absorption from a polariton condensate
 	!.....................................................
-	subroutine absorption(i) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
+	subroutine absorption(i,ijob) !(i,ijob,n, nsym,m,m1max, mv, chi, newm)
 	implicit none
-	integer, intent(in) :: i
+	integer, intent(in) :: i,ijob
 
 	if(i==1) then
 	 call HamParts(nsym,nph)
