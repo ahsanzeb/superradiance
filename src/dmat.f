@@ -5,6 +5,7 @@
 	implicit none
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
+	public :: mixparity
 	private :: writeatnode
 	contains
 
@@ -306,6 +307,7 @@
 	  endif
 
 	 end do ! is
+
 	end do ! ij
 
 !"Warning(dmat): W1 = W2":
@@ -318,6 +320,36 @@
 
 
 
+
+
+
+	!--------------------------------------------------------------------
+	! makes +,- superpositions of even and odd parity eigenstates to make
+	! states that have non-zero expectation of photon annihilation 
+	! operator in the superradiance phase.
+	! IMPORTANT: call after setparity() has created/resolved even and odd parity states
+	!--------------------------------------------------------------------
+	subroutine mixparity(ij1, nj, nev) ! eigp global in modmain.
+	implicit none
+	integer, intent(in) :: ij1, nj, nev
+	integer :: ij, is
+	double precision :: w1, w2, norm
+	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
+
+	do ij=1,nj
+	 do is=1,nev,2
+	 	proj = 0.0d0;
+	  proj(:,1) = eig(ij1+ij)%evec(:,is);
+	  proj(:,2) = eig(ij1+ij)%evec(:,is+1);
+	  eig(ij1+ij)%evec(:,is) = proj(:,1) + proj(:,2); ! even + odd
+	  eig(ij1+ij)%evec(:,is) = proj(:,1) - proj(:,2); ! even - odd
+	 end do ! is
+
+	end do ! ij
+
+	return
+	end subroutine mixparity
+!------------------------------------------------------------------
 
 
 

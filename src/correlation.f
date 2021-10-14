@@ -390,8 +390,8 @@
 			do j=1,nw
 				write(2,'(f20.10,3x,2E20.10)') dat(j,1:3)
 			end do
-			write(2,*)
-			write(2,*)
+			!write(2,*)
+			!write(2,*)
 		end do
 		close(1, status='delete')
 		!shift = jobs(i)%njobs

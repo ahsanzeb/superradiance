@@ -18,7 +18,8 @@
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-	use dmat, only: rwallnodes, rdmmol, rdmf, parityeig, setparity
+	use dmat, only: rwallnodes, rdmmol, rdmf, 
+     .                    parityeig, setparity,	mixparity
 	use correlation, only: tcorr, rwallnodesx
 	
 	implicit none
@@ -449,6 +450,9 @@
 	 if(goforcdms) then
 		njl = i-ij1
 		 call setparity(ij1, njl,nev) ! calc and prints parities of all nev states for all njl jobs
+
+		 call mixparity(ij1, njl,nev) ! makes +,- superpositions of even and odd parity eigenstates to make states that have non-zero expectation of photon annihilation operator in the superradiance phase.
+
 		 !write(*,*) "ij1, njl = ",ij1, njl
 		 call rdmmol(ij1, njl,n,nph,nev)
 		 call rdmf(ij1, njl,n,nph,nev)
