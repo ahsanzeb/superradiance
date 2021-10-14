@@ -282,32 +282,55 @@
 	integer :: ij, is
 	double precision :: w1, w2, norm
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
-
+	double precision, dimension(eig(1)%ntot,nev) :: auxg, auxu !g,u german
+	integer, dimension(nev) :: evenodd
 
 	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
 	! the higher eigenstates are sorted according to their larger parity component.
 	do ij=1,nj
+	 auxg = 0.0d0; auxu = 0.0d0;
 	 do is=1,nev
 	 	proj = 0.0d0;
 	  proj(:,1) = eigp(:,1) * eig(ij1+ij)%evec(:,is);
 	  proj(:,2) = eigp(:,2) * eig(ij1+ij)%evec(:,is);
 		w1 = sum(dabs(proj(:,1))**2); ! weight on odd
 		w2 = sum(dabs(proj(:,2))**2); ! weight on even
-	  if(w1 >= w2 .or. is==2) then ! set to odd
+	  if(w1 >= w2) then ! set to odd
 	   norm = 1.0d0/dsqrt(w1);
-	   eig(ij1+ij)%evec(:,is) = norm * proj(:,1);
+	   auxu(:,is) = norm * proj(:,1);
+	   evenodd(is) = 1
 	   !write(*,*) "Odd: is=",is
 	   if (w1==w2) then
 	    write(*,*)"Warning(dmat): W1 = W2"
 	   endif
-	  elseif(w2 > w1 .or. is==1)then !if(w2 > w1) then ! set to even
+	  elseif(w2 > w1)then !if(w2 > w1) then ! set to even
 	   !write(*,*) "Even: is=",is
 	   norm = 1.0d0/dsqrt(w2);
-	   eig(ij1+ij)%evec(:,is) = norm * proj(:,2);
+	   auxg(:,is) = norm * proj(:,2);
+	   evenodd(is) = 0
 	  endif
-
 	 end do ! is
 
+ 
+	! get the lowest energy even/odd states, not interested in finding/sorting higher even/odd states at the moment. might do later sometimes...
+	! even
+	do is=1,nev
+	 if (evenodd(is)==0) then
+	  eig(ij1+ij)%evec(:,1) = auxg(:,is);
+	  exit
+	 endif
+	end do
+	! odd
+	if(nev>1) then
+	do is=1,nev
+	 if (evenodd(is)==1) then
+	  eig(ij1+ij)%evec(:,2) = auxg(:,is);
+	  exit
+	 endif
+	end do
+	endif
+
+	
 	end do ! ij
 
 !"Warning(dmat): W1 = W2":
