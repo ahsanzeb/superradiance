@@ -254,7 +254,7 @@
 	eigp = 0.0d0
 
 	! build parity eigenstates eigp:
-	 do i=1,basis%sec(n)%ntot; ! N-1 mol state
+	 do i=1,basis%sec(n)%ntot;! ntotb ! N-1 mol state
 	  nx = basis%sec(n)%f(1,i) + basis%sec(n)%f(2,i); ! number of excitons, S+T
 	  do p=0,nph; ! photon states
 	   i1 = p*ntotb + i; ! global index of the basis state
@@ -285,6 +285,7 @@
 	double precision, dimension(eig(1)%ntot,nev) :: auxg, auxu !g,u german
 	integer, dimension(nev) :: evenodd
 
+	evenodd = -1;
 	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
 	! the higher eigenstates are sorted according to their larger parity component.
 	do ij=1,nj
@@ -295,6 +296,7 @@
 	  proj(:,2) = eigp(:,2) * eig(ij1+ij)%evec(:,is);
 		w1 = sum(dabs(proj(:,1))**2); ! weight on odd
 		w2 = sum(dabs(proj(:,2))**2); ! weight on even
+		write(*,*)"is, w1,w2 = ",is, w1,w2
 	  if(w1 >= w2) then ! set to odd
 	   norm = 1.0d0/dsqrt(w1);
 	   auxu(:,is) = norm * proj(:,1);
@@ -314,6 +316,7 @@
  
 	! get the lowest energy even/odd states, not interested in finding/sorting higher even/odd states at the moment. might do later sometimes...
 	! even
+	eig(ij1+ij)%evec = 0.0d0
 	do is=1,nev
 	 if (evenodd(is)==0) then
 	  eig(ij1+ij)%evec(:,1) = auxg(:,is);
@@ -324,7 +327,7 @@
 	if(nev>1) then
 	do is=1,nev
 	 if (evenodd(is)==1) then
-	  eig(ij1+ij)%evec(:,2) = auxg(:,is);
+	  eig(ij1+ij)%evec(:,2) = auxu(:,is);
 	  exit
 	 endif
 	end do
@@ -333,6 +336,7 @@
 	
 	end do ! ij
 
+	write(*,'(a,100i3)')"evenodd: ",evenodd
 !"Warning(dmat): W1 = W2":
 ! two states, one this one and one another one later or before this, would both be assigned to the same parity if exactly equal wt (w1,w2: double precision, a one digit difference is enough to eliminate this issue) in either sector.
 	    ! practically less likely but still there is a chance that this happens.
@@ -365,7 +369,7 @@
 	  proj(:,1) = eig(ij1+ij)%evec(:,is);
 	  proj(:,2) = eig(ij1+ij)%evec(:,is+1);
 	  eig(ij1+ij)%evec(:,is) = proj(:,1) + proj(:,2); ! even + odd
-	  eig(ij1+ij)%evec(:,is) = proj(:,1) - proj(:,2); ! even - odd
+	  eig(ij1+ij)%evec(:,is+1) = proj(:,1) - proj(:,2); ! even - odd
 	 end do ! is
 
 	end do ! ij
