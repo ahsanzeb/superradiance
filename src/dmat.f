@@ -445,7 +445,7 @@
 	  proj(:,2) = eigp(:,2) * eig(ij1+ij)%evec(:,is);
 		w1 = sum(dabs(proj(:,1))**2); ! weight on odd
 		w2 = sum(dabs(proj(:,2))**2); ! weight on even
-		write(*,*)"is, w1,w2 = ",is, w1,w2
+		!write(*,*)"is, w1,w2 = ",is, w1,w2
 	  if(w1 >= w2) then ! set to odd
 	   norm = 1.0d0/dsqrt(w1);
 	   auxu(:,is) = norm * proj(:,1);
@@ -485,7 +485,7 @@
 	
 	end do ! ij
 
-	write(*,'(a,100i3)')"evenodd: ",evenodd
+	!write(*,'(a,100i3)')"evenodd: ",evenodd
 !"Warning(dmat): W1 = W2":
 ! two states, one this one and one another one later or before this, would both be assigned to the same parity if exactly equal wt (w1,w2: double precision, a one digit difference is enough to eliminate this issue) in either sector.
 	    ! practically less likely but still there is a chance that this happens.

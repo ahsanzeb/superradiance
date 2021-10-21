@@ -86,7 +86,9 @@
 	do i=1,nj,1
 
 		!write(*,*)'jobs(node)%i1 , i2= ',jobs(node)%i1,jobs(node)%i2
+		if(mod(i,10)==0) then
 		if(node==0)write(*,'(a,i5,a,i5)')'Node 0: job ',i,' out of ',nj
+		endif
 		ijob = jobs(node)%i1+i-1
 
 		if(task==310) then
