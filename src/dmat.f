@@ -42,7 +42,16 @@
 	   end do ! k2
 	  end do ! k1
 	 end do ! jj
-	
+
+
+		! symmetrise dm:
+		do ij=1,nj
+		 do is=1,nev
+		  call symmetrise0(3,dm(:,:,ij,is))
+	   end do
+	  end do
+
+
 	! write output files at each node
 	call writeatnode(ij1,nj,2,dm,'dmmol')
 
@@ -106,6 +115,7 @@
 	 end do ! k2
 	end do! k1
 
+
 	! calculate <a> and <a^+a>
 	! write output - serial version at the moment....
 	if(ij1==0) then
@@ -115,11 +125,12 @@
      .                                      position="append")
 	endif
 
-	a = 0.0d0; 
-	ada = 0.0d0;
-
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	 a = 0.0d0; ada = 0.0d0;
 	 do is=1,2
+	 	! symmetrise dm:
+		call symmetrise0(nph+1,dm(:,:,ij,is))
+
 	  do i=1,nph; ! i=0 has zero contribution
 		 a(is) = a(is) + dsqrt(dble(i)) * dm(i,i-1,ij,is)
 		 ada(is) = ada(is) + dble(i) * dm(i,i,ij,is)
@@ -160,20 +171,22 @@
 	integer, dimension(3) :: dsize
 	integer :: thefile
 	integer :: i,ij,j,xj, iu1,iu2
-	character :: rank*30, fname*100
+	character :: rank*30, fname*100, fname2*100
 	double precision:: tr
 
 	tr = 0.0d0	
 	write(rank,'(i6.6)') node
-	fname = trim(filename)//'-'//trim(rank)
+	fname = trim(filename//'-1')//'-'//trim(rank)
+	fname2 = trim(filename//'-2')//'-'//trim(rank)
+
 	! write unformatted file
 	if(ij1==0) then
-		open(1,file=trim(fname//'-1'), form="formatted", action="write")
-		open(2,file=trim(fname)//'-2', form="formatted", action="write")
+		open(1,file=trim(fname), form="formatted", action="write")
+		open(2,file=trim(fname2), form="formatted", action="write")
 	else
-		open(1,file=trim(fname//'-1'), form="formatted", action="write",
+		open(1,file=trim(fname), form="formatted", action="write",
      .                                      position="append")
-		open(2,file=trim(fname//'-2'), form="formatted", action="write",
+		open(2,file=trim(fname2), form="formatted", action="write",
      .                                      position="append")
 	endif
 
@@ -196,6 +209,7 @@
 		!enddo ! xj
 	end do
 	close(1)
+	close(2)
 
 	return
 	end 	subroutine writeatnodeph
@@ -239,14 +253,14 @@
 	end 	subroutine writeatnode
 
 !------------------------------------------------------------------
-	subroutine rwallnodes(filename,n,mv)
+	subroutine rwallnodes(filename,n,mv,nev)
 	implicit none
 	character(len=*), intent(in) :: filename
-	integer, intent(in) :: n,mv
+	integer, intent(in) :: n,mv, nev
 	integer :: i,ij,k,j,xj
 	character :: rank*30, fname*100
 	!local
-	double precision, dimension(mv+1,mv+1,njobs,nev) :: dm
+	double precision, dimension(mv+1,mv+1,njobs,nev) :: dm ! nev local
 	character :: dir*30
 	logical :: ex
 
@@ -293,7 +307,8 @@
      .      position="append")
 	do ij=1,njobs
 		do xj=1,nev
-			call symmetrise(mv+1,dm(:,:,ij,xj)) ! complete lower triangular
+			!call symmetrise(mv+1,dm(:,:,ij,xj)) ! complete lower triangular
+			! symmetrisation already done when dm is calculated
 			do i=1,mv+1
 				write(1,*) (dm(i,j,ij,xj), j=1,mv+1)
 			end do
@@ -304,6 +319,22 @@
 
 	return
 	end 	subroutine rwallnodes
+!------------------------------------------------------------------
+	subroutine symmetrise0(l,a) ! set lower triangular equal to the upper triangular.
+	implicit none
+	integer, intent(in) :: l
+	double precision, dimension(l,l), intent(inout) :: a
+	double precision, dimension(l,l) :: aux
+	integer :: i,j
+
+	aux = a;
+	a = a + aux; ! doubles the diagonal elements
+	! correct diagonal elements, divide by 2
+	do i=1,l
+	 a(i,i) = a(i,i)*0.5d0
+	end do
+	return
+	end 	subroutine symmetrise0
 !------------------------------------------------------------------
 
 	

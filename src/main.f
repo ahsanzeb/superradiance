@@ -525,8 +525,11 @@
 	 call rwallnodesx('temp-t','absorption-t',nt)
 	 call rwallnodesx('temp-w','absorption-w',nw)
 	case(310)
-	  call rwallnodes("dmmol",n,2)
-	  call rwallnodes("dmfield",n,nph)
+	  call rwallnodes("dmmol",n,2,nev)
+	  !call rwallnodes("dmfield",n,nph)
+	  call rwallnodes("dmfield-1",n,nph,1)
+	  call rwallnodes("dmfield-2",n,nph,1)
+
 	end select
 	return
 	end subroutine writeout
