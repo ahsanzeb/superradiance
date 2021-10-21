@@ -91,7 +91,7 @@
 
 	double precision,dimension(2) :: a(2), ada(2) ! expectations for the lowest two states
 	logical, dimension(nj) :: reorder
-
+	double precision :: e0,e1
 	reorder = .false.;
 	
 	ntotb = basis%sec(n)%ntot; 
@@ -126,16 +126,29 @@
 	endif
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
-	 a = 0.0d0; ada = 0.0d0;
-	 do is=1,2
-	 	! symmetrise dm:
-		call symmetrise0(nph+1,dm(:,:,ij,is))
 
-	  do i=1,nph; ! i=0 has zero contribution
-		 a(is) = a(is) + dsqrt(dble(i)) * dm(i,i-1,ij,is)
-		 ada(is) = ada(is) + dble(i) * dm(i,i,ij,is)
-	  end do
-	 end do ! is
+	 ! symmetrise dm:
+	 do is=1,2
+	  call symmetrise0(nph+1,dm(:,:,ij,is))
+	 end do
+
+	 e0 = eig(ij1+ij)%evec(k1i,1); ! lowest state with even parity
+	 e1 = eig(ij1+ij)%evec(k1i,2); ! lowest state with odd parity OR the triplet state OR their superpositon
+
+	  a = 0.0d0; ada = 0.0d0;
+	  do is=1,2
+	   do i=1,nph; ! i=0 has zero contribution
+		  a(is) = a(is) + dsqrt(dble(i)) * dm(i,i-1,ij,is)
+		  ada(is) = ada(is) + dble(i) * dm(i,i,ij,is)
+	   end do
+	  end do ! is
+
+	! if lowest two states becomes degenerate, parity broken, order param becomes finite
+	! otherwise set it to zero. [can eliminate calc it above but code becomes ugly]
+	if(dabs(e0-e1) > 1.0d-6) then !! non-degen, parity not broken, order param = 0  
+	 a = 0.0d0
+	endif
+
 
 	 ! sort positive and negative <a>:
 	 ! write positive <a> first and remember the order for mol pops and dmf.
