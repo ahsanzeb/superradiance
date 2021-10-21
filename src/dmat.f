@@ -18,8 +18,8 @@
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
 	double precision,dimension(0:2,0:2,nj,nev) :: dm
-	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb
-	double precision :: x1, x2
+	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb, is
+	double precision :: x1, x2 !, ns, nt
 	
 	dm = 0.0d0;
 	ntotb = basis%sec(n)%ntot; ! size of mol block
@@ -46,6 +46,27 @@
 	! write output files at each node
 	call writeatnode(ij1,nj,2,dm,'dmmol')
 
+
+	! calculate <ns> and <nt>
+	!ns = dm(2,2);
+	!nt = dm(1,1);
+
+	! write output - serial version at the moment....
+	if(ij1==0) then
+		open(13,file="mol-pops.dat", form="formatted", action="write")
+	else
+		open(13,file="mol-pops.dat", form="formatted", action="write",
+     .                                      position="append")
+	endif
+
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+		            !   S            T
+	  write(13,*) dm(2,2,ij,1), dm(1,1,ij,1), ! +ve side
+     .          dm(2,2,ij,2), dm(1,1,ij,2) !  -ve side
+	end do ! ij
+
+	close(13)
 	
 	return
 	end subroutine rdmmol
@@ -57,7 +78,12 @@
 	implicit none
 	integer, intent(in) :: ij1,nj, n,nph, nev 
 	double precision,dimension(0:nph,0:nph,nj,nev) :: dm
-	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij
+	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij,is
+
+	double precision,dimension(2) :: a(2), ada(2) ! expectations for the lowest two states
+	logical, dimension(nj) :: reorder
+
+	reorder = .false.;
 	
 	ntotb = basis%sec(n)%ntot; 
 	! size of the molecular block for every photon state
@@ -80,11 +106,101 @@
 	 end do ! k2
 	end do! k1
 
-	! write output files at each node
-	call writeatnode(ij1,nj,nph,dm,'dmfield')
+	! calculate <a> and <a^+a>
+	! write output - serial version at the moment....
+	if(ij1==0) then
+		open(12,file="order-param.dat", form="formatted", action="write")
+	else
+		open(12,file="order-param.dat", form="formatted", action="write",
+     .                                      position="append")
+	endif
+
+	a = 0.0d0; 
+	ada = 0.0d0;
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	 do is=1,2
+	  do i=1,nph; ! i=0 has zero contribution
+		 a(is) = a(is) + dsqrt(dble(i)) * dm(i,i-1,ij,is)
+		 ada(is) = ada(is) + dble(i) * dm(i,i,ij,is)
+	  end do
+	 end do ! is
+
+	 ! sort positive and negative <a>:
+	 ! write positive <a> first and remember the order for mol pops and dmf.
+	 if(a(1) >= a(2)) then
+	 	reorder(ij) = .false.
+	 	write(12,*) a(1), a(2), ada
+	 else
+		reorder(ij) = .true.
+	 	write(12,*) a(2), a(1), ada(2), ada(1)
+	 endif
+
+	end do ! ij
+	
+	close(12)
+
+
+
+	! write output files at each node, considering reorder
+	call writeatnodeph(ij1,nj,nph,dm,'dmfield',reorder)
+
+
+
 
 	return
 	end subroutine rdmf
+!------------------------------------------------------------------
+	subroutine writeatnodeph(ij1,nj,mv,dm,filename, reorder)
+	implicit none
+	integer, intent(in) :: ij1,nj,mv
+	double precision, dimension(mv+1,mv+1,nj,nev), intent(in) :: dm
+	character(len=*), intent(in) :: filename
+	logical,dimension(nj), intent(in) :: reorder ! determined from <a>
+	integer, dimension(3) :: dsize
+	integer :: thefile
+	integer :: i,ij,j,xj, iu1,iu2
+	character :: rank*30, fname*100
+	double precision:: tr
+
+	tr = 0.0d0	
+	write(rank,'(i6.6)') node
+	fname = trim(filename)//'-'//trim(rank)
+	! write unformatted file
+	if(ij1==0) then
+		open(1,file=trim(fname//'-1'), form="formatted", action="write")
+		open(2,file=trim(fname)//'-2', form="formatted", action="write")
+	else
+		open(1,file=trim(fname//'-1'), form="formatted", action="write",
+     .                                      position="append")
+		open(2,file=trim(fname//'-2'), form="formatted", action="write",
+     .                                      position="append")
+	endif
+
+
+	
+	do ij=1,nj
+		if(reorder(ij)) then
+	   iu1 = 2; iu2 = 1
+	  else
+	   iu1 = 1; iu2 = 2
+	  endif
+	  	  
+		!do xj=1,nev
+		  !tr = 0.0d0
+			do i=1,mv+1
+				write(iu1,*) (dm(i,j,ij,1), j=1,mv+1)
+				write(iu2,*) (dm(i,j,ij,2), j=1,mv+1)
+			end do
+			!write(*,*)"ij, is, trace: ", ij, xj, tr
+		!enddo ! xj
+	end do
+	close(1)
+
+	return
+	end 	subroutine writeatnodeph
+
+
 !------------------------------------------------------------------
 	subroutine writeatnode(ij1,nj,mv,dm,filename)
 	implicit none
@@ -118,8 +234,10 @@
 		enddo ! xj
 	end do
 	close(1)
+	
 	return
 	end 	subroutine writeatnode
+
 !------------------------------------------------------------------
 	subroutine rwallnodes(filename,n,mv)
 	implicit none
@@ -364,7 +482,7 @@
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
 
 	do ij=1,nj
-	 do is=1,nev,2
+	 do is=1,nev-1,2
 	 	proj = 0.0d0;
 	  proj(:,1) = eig(ij1+ij)%evec(:,is);
 	  proj(:,2) = eig(ij1+ij)%evec(:,is+1);
