@@ -661,12 +661,14 @@
 	 do is=1,nev
 		if(eig(ij1+ij)%par(is)==0) then
 			ind0 = is ! even
+			eig(ij1+ij)%par(nev+1) = is
 			exit
 		endif
 	 end do
 	 do is=1,nev
 		if(eig(ij1+ij)%par(is)==1) then
 			ind1 = is ! odd
+			eig(ij1+ij)%par(nev+2) = is
 			exit
 		endif
 	 end do
