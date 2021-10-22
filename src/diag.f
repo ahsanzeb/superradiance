@@ -178,11 +178,14 @@ c        %----------------------------------------------%
 	eig(ijob)%n2 = nev
 	if(allocated(eig(ijob)%evec))deallocate(eig(ijob)%evec)
 	if(allocated(eig(ijob)%eval))deallocate(eig(ijob)%eval)
+
+	if(allocated(eig(ijob)%par))deallocate(eig(ijob)%par)
+	allocate(eig(ijob)%par(nev+2))
+
 	allocate(eig(ijob)%evec(n,nev))
 	allocate(eig(ijob)%eval(nev))
-	eig(ijob)%evec = v(1:n,1:nev) !reshape(v(1:n,1:nev),(/n*nev/))
+		eig(ijob)%evec = v(1:n,1:nev) !reshape(v(1:n,1:nev),(/n*nev/))
 	eig(ijob)%eval = d(1:nev,1) ! dim of d = (maxncv,2), so first nev values?
-
 	!write(*,*) "diag: n1,n2 [n,nev]= ",n,nev
 	!write(*,*) "diag: eval [d] = ",d(1:nev,1)
 	!open(17,file='eigval-ijob',action='write',position='append')
@@ -270,6 +273,10 @@ c        %----------------------------------------------%
 	eig(ijob)%n2 = nev
 	if(allocated(eig(ijob)%evec))deallocate(eig(ijob)%evec)
 	if(allocated(eig(ijob)%eval))deallocate(eig(ijob)%eval)
+
+	if(allocated(eig(ijob)%par))deallocate(eig(ijob)%par)
+	allocate(eig(ijob)%par(nev+2)) ! last two elements for storing the lowest enev & odd indices
+
 	allocate(eig(ijob)%evec(ntot,nev))
 	allocate(eig(ijob)%eval(nev))
 	eig(ijob)%evec = H(1:ntot,1:nev) !reshape(H(1:ntot,1:nev),(/ntot*nev/)) ! columns are eigenvectors??? or rows???

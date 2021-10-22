@@ -57,7 +57,7 @@
 	type(cluster), dimension(:), allocatable :: jobs
 
 	type :: parameters
-		double precision :: wr, del, lam, wv
+		double precision :: wr, del, lam, wv, j
 		integer :: ntot, ntotdn, ntotb, ntotup, ntotg
 	end type parameters
 	type(parameters), dimension(:), allocatable :: param
@@ -95,6 +95,7 @@
 		integer :: ntot, n1,n2 ! size of hilbert space, =nrows, ncols=nevecs
 		double precision, allocatable :: eval(:)
 		double precision, allocatable :: evec(:,:)
+		integer, allocatable:: par(:) ! parity: 0/1 for even/odd
 	end type Eigensystems
 
 	type :: HSectors

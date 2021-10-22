@@ -5,7 +5,7 @@
 	implicit none
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
-	public :: mixparity
+	public :: mixparity, rdmmol2, rdmf2
 	private :: writeatnode
 	contains
 
@@ -19,6 +19,75 @@
 	integer, intent(in) :: ij1, nj,n,nph,nev
 	double precision,dimension(0:2,0:2,nj,nev) :: dm
 	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb, is
+	double precision :: x1, x2 !, ns, nt
+	
+	dm = 0.0d0;
+	ntotb = basis%sec(n)%ntot; ! size of mol block
+	 
+	 do jj=1,basis%sec(n-1)%ntot; ! N-1 mol state
+	  do k1=0,2; ! target mol states
+	   j1 = map(k1,jj);  ! N mol state
+	   x1 = basis%sec(n-1)%r(k1,jj)
+	   do k2=0,2; ! target mol states
+	    j2 = map(k2,jj);
+	    x2 = x1 * basis%sec(n-1)%r(k2,jj)
+	    do p=0,nph; ! photon states
+	     i1 = p*ntotb + j1; ! global index of the basis state with k1 
+	     i2 = p*ntotb + j2; ! global index of the basis state with k2 
+	     do ij=1,nj! ij1+1,ij1+nj; ! jobs
+	      dm(k1,k2,ij,:) =  dm(k1,k2,ij,:) + 
+     .          x2 *eig(ij1+ij)%evec(i1,:)*eig(ij1+ij)%evec(i2,:)
+	     end do ! ij	
+	    end do ! p 
+	   end do ! k2
+	  end do ! k1
+	 end do ! jj
+
+
+		! symmetrise dm:
+		do ij=1,nj
+		 do is=1,nev
+		  call symmetrise0(3,dm(:,:,ij,is))
+	   end do
+	  end do
+
+
+	! write output files at each node
+	call writeatnode(ij1,nj,2,dm,'dmmol-par') ! 2 for mv=2; 3x3 dms
+
+	! calculate <ns> and <nt>
+	!ns = dm(2,2);
+	!nt = dm(1,1);
+
+	! write output - serial version at the moment....
+	if(ij1==0) then
+	 open(13,file="mol-pops-par.dat", form="formatted",
+     .  action="write")
+	else
+	 open(13,file="mol-pops-par.dat", form="formatted", 
+     . action="write", position="append")
+	endif
+
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	 do is=1,nev
+	  write(13,*) dm(2,2,ij,is), dm(1,1,ij,is)
+	 end do
+	end do ! ij
+
+	close(13)
+	
+	return
+	end subroutine rdmmol
+!======================================================================
+	!--------------------------------------------------------------------
+	! reduced density matrix of a molecule
+	!--------------------------------------------------------------------
+	subroutine rdmmol2(ij1, nj,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj,n,nph,nev
+	double precision,dimension(0:2,0:2,nj,nev) :: dm
+	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb, is, ind0,ind1
 	double precision :: x1, x2 !, ns, nt
 	
 	dm = 0.0d0;
@@ -70,28 +139,116 @@
 
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
-		            !   S            T
-	  write(13,*) dm(2,2,ij,1), dm(1,1,ij,1), ! +ve side
-     .          dm(2,2,ij,2), dm(1,1,ij,2) !  -ve side
+		ind0 = eig(ij1+ij)%par(nev+1);
+		ind1 = eig(ij1+ij)%par(nev+2);
+	  write(13,*) dm(2,2,ij,ind0), dm(1,1,ij,ind0) ! +ve side
+	  write(13,*) dm(2,2,ij,ind1), dm(1,1,ij,ind1) ! negative side
 	end do ! ij
 
 	close(13)
 	
 	return
-	end subroutine rdmmol
+	end subroutine rdmmol2
 !======================================================================
+
+
+
 	!--------------------------------------------------------------------
 	! reduced density matrix of the field mode
 	!--------------------------------------------------------------------
 	subroutine rdmf(ij1,nj,n,nph,nev)
 	implicit none
-	integer, intent(in) :: ij1,nj, n,nph, nev 
+	integer, intent(in) :: ij1,nj, n,nph, nev 	
 	double precision,dimension(0:nph,0:nph,nj,nev) :: dm
 	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij,is
 
-	double precision,dimension(2) :: a(2), ada(2) ! expectations for the lowest two states
+	double precision, dimension(nev) :: a, ada ! expectations for the lowest two states
+	character(len=100) :: fout1, fout2
+
+
+
+	fout1 = "order-param-par.dat";
+	fout2 = "dmfield-par";
+
+	ntotb = basis%sec(n)%ntot; 
+	! size of the molecular block for every photon state
+
+	dm =0.0d0
+
+	do k1=0,nph ! photon states
+	 k1l = k1*ntotb
+	 do k2=0,nph ! photon states
+	  k2l = k2*ntotb
+	  do i=1,ntotb ! mol blocks
+	   k1i=k1l + i ! global index
+	   k2i=k2l + i
+	   do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	    ! (...,:) for nev lowest eigenstates
+	    dm(k1,k2,ij,:) = dm(k1,k2,ij,:) + 
+     .       eig(ij1+ij)%evec(k1i,:)*eig(ij1+ij)%evec(k2i,:)
+	   end do! ij
+	  end do !i
+	 end do ! k2
+	end do! k1
+
+
+	! calculate <a> and <a^+a>
+	! write output - serial version at the moment....
+	if(ij1==0) then
+		open(12,file=trim(fout1), form="formatted", action="write")
+	else
+		open(12,file=trim(fout1), form="formatted", action="write",
+     .                                      position="append")
+	endif
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+
+	 ! symmetrise dm:
+	 do is=1,nev
+	  call symmetrise0(nph+1,dm(:,:,ij,is))
+	 end do
+
+	  a = 0.0d0; ada = 0.0d0;
+	  do is=1,nev
+	   do i=1,nph; ! i=0 has zero contribution
+		  a(is) = a(is) + dsqrt(dble(i)) * dm(i,i-1,ij,is)
+		  ada(is) = ada(is) + dble(i) * dm(i,i,ij,is)
+	   end do
+	  end do ! is
+
+	 write(12,*) a, ada
+	 
+	end do ! ij
+	
+	close(12)
+
+	! write output files at each node, considering reorder
+	call writeatnode(ij1,nj,nph,dm,fout2)
+
+	return
+	end subroutine rdmf
+!------------------------------------------------------------------
+
+
+
+
+	!--------------------------------------------------------------------
+	! reduced density matrix of the field mode
+	!--------------------------------------------------------------------
+	subroutine rdmf2(ij1,nj,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1,nj, n,nph, nev 	
+	double precision,dimension(0:nph,0:nph,nj,nev) :: dm
+	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij,is
+
+	double precision,dimension(2) :: a, ada ! expectations for the lowest two states
 	logical, dimension(nj) :: reorder
 	double precision :: e0,e1
+	character(len=100) :: fout1, fout2
+
+	fout1 = "order-param.dat";
+	fout2 = "dmfield";
+
 	reorder = .false.;
 	
 	ntotb = basis%sec(n)%ntot; 
@@ -119,9 +276,9 @@
 	! calculate <a> and <a^+a>
 	! write output - serial version at the moment....
 	if(ij1==0) then
-		open(12,file="order-param.dat", form="formatted", action="write")
+		open(12,file=trim(fout1), form="formatted", action="write")
 	else
-		open(12,file="order-param.dat", form="formatted", action="write",
+		open(12,file=trim(fout1), form="formatted", action="write",
      .                                      position="append")
 	endif
 
@@ -132,8 +289,8 @@
 	  call symmetrise0(nph+1,dm(:,:,ij,is))
 	 end do
 
-	 e0 = eig(ij1+ij)%evec(k1i,1); ! lowest state with even parity
-	 e1 = eig(ij1+ij)%evec(k1i,2); ! lowest state with odd parity OR the triplet state OR their superpositon
+	 e0 = eig(ij1+ij)%eval(1); ! lowest state with even parity
+	 e1 = eig(ij1+ij)%eval(2); ! lowest state with odd parity OR the triplet state OR their superpositon
 
 	  a = 0.0d0; ada = 0.0d0;
 	  do is=1,2
@@ -145,8 +302,10 @@
 
 	! if lowest two states becomes degenerate, parity broken, order param becomes finite
 	! otherwise set it to zero. [can eliminate calc it above but code becomes ugly]
-	if(dabs(e0-e1) > 1.0d-6) then !! non-degen, parity not broken, order param = 0  
+	if(dabs(e0-e1) > 1.0d-2 ) then !! non-degen, parity not broken, order param = 0  
 	 a = 0.0d0
+	 !write(*,*)"SETTING <a>=0 because it's not in the SR phase yet"
+	 !write(*,*) "e0,e1 = ",e0,e1
 	endif
 
 
@@ -154,7 +313,7 @@
 	 ! write positive <a> first and remember the order for mol pops and dmf.
 	 if(a(1) >= a(2)) then
 	 	reorder(ij) = .false.
-	 	write(12,*) a(1), a(2), ada
+	 	write(12,*) a, ada
 	 else
 		reorder(ij) = .true.
 	 	write(12,*) a(2), a(1), ada(2), ada(1)
@@ -165,15 +324,13 @@
 	close(12)
 
 
-
 	! write output files at each node, considering reorder
-	call writeatnodeph(ij1,nj,nph,dm,'dmfield',reorder)
-
-
+	call writeatnodeph(ij1,nj,nph,dm,fout2,reorder)
 
 
 	return
-	end subroutine rdmf
+	end subroutine rdmf2
+
 !------------------------------------------------------------------
 	subroutine writeatnodeph(ij1,nj,mv,dm,filename, reorder)
 	implicit none
@@ -189,17 +346,13 @@
 
 	tr = 0.0d0	
 	write(rank,'(i6.6)') node
-	fname = trim(filename//'-1')//'-'//trim(rank)
-	fname2 = trim(filename//'-2')//'-'//trim(rank)
+	fname = trim(filename)//'-'//trim(rank)
 
 	! write unformatted file
 	if(ij1==0) then
 		open(1,file=trim(fname), form="formatted", action="write")
-		open(2,file=trim(fname2), form="formatted", action="write")
 	else
 		open(1,file=trim(fname), form="formatted", action="write",
-     .                                      position="append")
-		open(2,file=trim(fname2), form="formatted", action="write",
      .                                      position="append")
 	endif
 
@@ -211,18 +364,17 @@
 	  else
 	   iu1 = 1; iu2 = 2
 	  endif
-	  	  
-		!do xj=1,nev
-		  !tr = 0.0d0
-			do i=1,mv+1
-				write(iu1,*) (dm(i,j,ij,1), j=1,mv+1)
-				write(iu2,*) (dm(i,j,ij,2), j=1,mv+1)
-			end do
-			!write(*,*)"ij, is, trace: ", ij, xj, tr
-		!enddo ! xj
+
+
+		do i=1,mv+1
+			write(1,*) (dm(i,j,ij,iu1), j=1,mv+1)
+		end do
+		do i=1,mv+1
+			write(1,*) (dm(i,j,ij,iu2), j=1,mv+1)
+		end do
+
 	end do
 	close(1)
-	close(2)
 
 	return
 	end 	subroutine writeatnodeph
@@ -441,17 +593,17 @@
 	subroutine setparity(ij1, nj, nev) ! eigp global in modmain.
 	implicit none
 	integer, intent(in) :: ij1, nj, nev
+
 	integer :: ij, is
 	double precision :: w1, w2, norm
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
-	double precision, dimension(eig(1)%ntot,nev) :: auxg, auxu !g,u german
-	integer, dimension(nev) :: evenodd
+	
+	! output parities file
+	open(110,file="eigparity.dat", form="formatted", action="write")
 
-	evenodd = -1;
 	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
 	! the higher eigenstates are sorted according to their larger parity component.
 	do ij=1,nj
-	 auxg = 0.0d0; auxu = 0.0d0;
 	 do is=1,nev
 	 	proj = 0.0d0;
 	  proj(:,1) = eigp(:,1) * eig(ij1+ij)%evec(:,is);
@@ -461,47 +613,23 @@
 		!write(*,*)"is, w1,w2 = ",is, w1,w2
 	  if(w1 >= w2) then ! set to odd
 	   norm = 1.0d0/dsqrt(w1);
-	   auxu(:,is) = norm * proj(:,1);
-	   evenodd(is) = 1
+	   eig(ij1+ij)%evec(:,is) = norm * proj(:,1);
+	   eig(ij1+ij)%par(is) = 1
 	   !write(*,*) "Odd: is=",is
-	   if (w1==w2) then
-	    write(*,*)"Warning(dmat): W1 = W2"
-	   endif
 	  elseif(w2 > w1)then !if(w2 > w1) then ! set to even
 	   !write(*,*) "Even: is=",is
 	   norm = 1.0d0/dsqrt(w2);
-	   auxg(:,is) = norm * proj(:,2);
-	   evenodd(is) = 0
+	   eig(ij1+ij)%evec(:,is) = norm * proj(:,2);
+	   eig(ij1+ij)%par(is) = 0
 	  endif
 	 end do ! is
 
- 
-	! get the lowest energy even/odd states, not interested in finding/sorting higher even/odd states at the moment. might do later sometimes...
-	! even
-	eig(ij1+ij)%evec = 0.0d0
-	do is=1,nev
-	 if (evenodd(is)==0) then
-	  eig(ij1+ij)%evec(:,1) = auxg(:,is);
-	  exit
-	 endif
-	end do
-	! odd
-	if(nev>1) then
-	do is=1,nev
-	 if (evenodd(is)==1) then
-	  eig(ij1+ij)%evec(:,2) = auxu(:,is);
-	  exit
-	 endif
-	end do
-	endif
-
+	! write output parities file
+	write(110,*) (eig(ij1+ij)%par(is), is=1,nev)
 	
 	end do ! ij
 
-	!write(*,'(a,100i3)')"evenodd: ",evenodd
-!"Warning(dmat): W1 = W2":
-! two states, one this one and one another one later or before this, would both be assigned to the same parity if exactly equal wt (w1,w2: double precision, a one digit difference is enough to eliminate this issue) in either sector.
-	    ! practically less likely but still there is a chance that this happens.
+	close(110)
 
 	return
 	end subroutine setparity
@@ -524,16 +652,31 @@
 	integer :: ij, is
 	double precision :: w1, w2, norm
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
+	integer :: ind0, ind1
+
 
 	do ij=1,nj
-	 do is=1,nev-1,2
-	 	proj = 0.0d0;
-	  proj(:,1) = eig(ij1+ij)%evec(:,is);
-	  proj(:,2) = eig(ij1+ij)%evec(:,is+1);
-	  eig(ij1+ij)%evec(:,is) = proj(:,1) + proj(:,2); ! even + odd
-	  eig(ij1+ij)%evec(:,is+1) = proj(:,1) - proj(:,2); ! even - odd
-	 end do ! is
 
+	 ! find the lowest even and lowest odd indices
+	 do is=1,nev
+		if(eig(ij1+ij)%par(is)==0) then
+			ind0 = is ! even
+			exit
+		endif
+	 end do
+	 do is=1,nev
+		if(eig(ij1+ij)%par(is)==1) then
+			ind1 = is ! odd
+			exit
+		endif
+	 end do
+		! make +- superpositions of the two lowest parity states:
+		! use the two lowest eigenstates to store these.	
+	 	proj = 0.0d0;
+	  proj(:,1) = eig(ij1+ij)%evec(:,ind0);
+	  proj(:,2) = eig(ij1+ij)%evec(:,ind1);
+	  eig(ij1+ij)%evec(:,1) = proj(:,1) + proj(:,2); ! even + odd
+	  eig(ij1+ij)%evec(:,2) = proj(:,1) - proj(:,2); ! even - odd
 	end do ! ij
 
 	return

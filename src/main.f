@@ -18,7 +18,7 @@
 	use hamiltonian, only: MakeHhtc, HamParts
 	use diag, only: diagonalise
 	use mpi
-	use dmat, only: rwallnodes, rdmmol, rdmf, 
+	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
      .                    parityeig, setparity,	mixparity
 	use correlation, only: tcorr, rwallnodesx
 	
@@ -194,7 +194,7 @@
 						param(i)%wr = wrs(i2) ! omega_R
 						param(i)%del = dels(i3) ! delta for omega_c, photon energy
 						param(i)%lam = lams(i4) ! lam for soc
-						param(i)%wv = wvs(i5) ! wv for omega_T triplet energy
+						param(i)%j = wvs(i5) ! wv for omega_T triplet energy; j for exchange splitting [wv = wc-j]
 						!param(i)%wc = wc
 					end do
 				end do
@@ -452,12 +452,18 @@
 	 if(goforcdms) then
 		njl = i-ij1
 		 call setparity(ij1, njl,nev) ! calc and prints parities of all nev states for all njl jobs
+		! work with the parity eigenstates
+		 call rdmmol(ij1, njl,n,nph,nev)
+		 call rdmf(ij1, njl,n,nph,nev)
 
+
+		! now make the superpositions for the two lowest parity states
+		! and work out everything for the +- superpositions.
 		 call mixparity(ij1, njl,nev) ! makes +,- superpositions of even and odd parity eigenstates to make states that have non-zero expectation of photon annihilation operator in the superradiance phase.
 
 		 !write(*,*) "ij1, njl = ",ij1, njl
-		 call rdmmol(ij1, njl,n,nph,nev)
-		 call rdmf(ij1, njl,n,nph,nev)
+		 call rdmmol2(ij1, njl,n,nph,nev)
+		 call rdmf2(ij1, njl,n,nph,nev)
 		! reset variables for next iteration
 		goforcdms = .false.;
 		ij1 = i;
@@ -527,10 +533,13 @@
 	 call rwallnodesx('temp-t','absorption-t',nt)
 	 call rwallnodesx('temp-w','absorption-w',nw)
 	case(310)
-	  call rwallnodes("dmmol",n,2,nev)
-	  !call rwallnodes("dmfield",n,nph)
-	  call rwallnodes("dmfield-1",n,nph,1)
-	  call rwallnodes("dmfield-2",n,nph,1)
+		! filtered parity eigenstates:
+	  call rwallnodes("dmmol-par",n,2,nev)
+	  call rwallnodes("dmfield-par",n,nph,nev)
+	  
+	 ! broken parity, superposition states, only the lowest two:
+	  call rwallnodes("dmmol",n,2, 2)
+	  call rwallnodes("dmfield",n,nph, 2)
 
 	end select
 	return
