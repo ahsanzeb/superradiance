@@ -71,7 +71,7 @@
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	 do is=1,nev
-	  write(13,*) dm(2,2,ij,is), dm(1,1,ij,is)
+	  write(13,*) dm(2,2,ij,is), dm(1,1,ij,is) ! S, T
 	 end do
 	end do ! ij
 
@@ -599,8 +599,12 @@
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
 	
 	! output parities file
-	open(110,file="eigparity.dat", form="formatted", action="write")
-
+	if(ij1==0) then
+	 open(110,file="eigparity.dat", form="formatted", action="write")
+	else
+	 open(110,file="eigparity.dat", form="formatted", action="write",
+     .       position="append")
+	endif
 	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
 	! the higher eigenstates are sorted according to their larger parity component.
 	do ij=1,nj
@@ -650,7 +654,7 @@
 	implicit none
 	integer, intent(in) :: ij1, nj, nev
 	integer :: ij, is
-	double precision :: w1, w2, norm
+	double precision :: w1, w2, norm, sqr2
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
 	integer :: ind0, ind1
 
@@ -675,8 +679,9 @@
 		! make +- superpositions of the two lowest parity states:
 		! use the two lowest eigenstates to store these.	
 	 	proj = 0.0d0;
-	  proj(:,1) = eig(ij1+ij)%evec(:,ind0);
-	  proj(:,2) = eig(ij1+ij)%evec(:,ind1);
+	 	sqr2 = dsqrt(1.0d0/2.0d0);
+	  proj(:,1) = eig(ij1+ij)%evec(:,ind0) * sqr2;
+	  proj(:,2) = eig(ij1+ij)%evec(:,ind1) * sqr2;
 	  eig(ij1+ij)%evec(:,1) = proj(:,1) + proj(:,2); ! even + odd
 	  eig(ij1+ij)%evec(:,2) = proj(:,1) - proj(:,2); ! even - odd
 	end do ! ij

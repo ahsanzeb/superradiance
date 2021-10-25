@@ -490,6 +490,10 @@
 	! diagonalise
 	call diagonalise(i)
 
+
+	call setparity(ij1, njl,nev) ! calc and prints parities of all nev states for all njl jobs
+	call mixparity(ij1, njl,nev) ! makes +,- superpositions of even and odd parity eigenstates.
+
 	! save the lowest energy eigenstate for time evolution
 	call seteig0(i)
 
