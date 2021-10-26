@@ -19,7 +19,7 @@
 	use diag, only: diagonalise
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
-     .                    parityeig, setparity,	mixparity
+     .      dipolematrix, parityeig, setparity,	mixparity
 	use correlation, only: tcorr, rwallnodesx
 	
 	implicit none
@@ -490,15 +490,20 @@
 	! diagonalise
 	call diagonalise(i)
 
+	call setparity(i-1, 1,nev) ! calc and prints parities of all nev states for all njl jobs
 
-	call setparity(ij1, njl,nev) ! calc and prints parities of all nev states for all njl jobs
-	call mixparity(ij1, njl,nev) ! makes +,- superpositions of even and odd parity eigenstates.
+	call dipolematrix(i-1,1)
+	!write(*,*)'calc dipole for parity states'
+
+
+	call mixparity(i-1, 1,nev) ! makes +,- superpositions of even and odd parity eigenstates.
+	!call dipolematrix(i-1,1)
+	!write(*,*)'calc dipole for broken parity superposition states'
 
 	! save the lowest energy eigenstate for time evolution
-	call seteig0(i)
-
-	call tcorr(dt,w1,w2,nt,nw,i,101)
-
+	 call seteig0(i)
+	 call tcorr(dt,w1,w2,nt,nw,i,101)
+	
 	return
 	end subroutine absorption
 	!.....................................................

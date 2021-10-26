@@ -135,7 +135,7 @@
 	! p=0 and nph cases dealt with seperatly
 	do p=0,nph ! photons
 	 x = dsqrt(dble(p)); ! a^-
-	 y = dsqrt(dble(p+1)); ! a^+
+	 y = dsqrt(dble(p+1)) * uscfac; ! a^+
 
 	 ! absolute basis index:
 	 ! n0up, n0dn:   up/dn here refer to changes in photon number

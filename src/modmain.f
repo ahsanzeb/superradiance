@@ -22,7 +22,8 @@
 	double precision :: wr, delta, lambda, wv,wc ! set in main? fro ith job
 	integer :: ntot, ntotb
 	integer :: nact, nsym
-
+	double precision :: uscfac ! Ultra-strong coupling factor;
+	
 	! time evolution to get correlation
 	logical :: td, fft !, melem, hopresp, fixrhoex, amelem
 	integer :: chi
@@ -317,7 +318,7 @@
 	dt = 0.01;
 	kappa2=0.05;
 	prntstep = 1000;
-
+	uscfac = 1.0d0;
 
 	!--------------------------!
 	!     read from input.in   !
@@ -357,6 +358,9 @@
 
 	case('nstates') 
 	 read(50,*,err=20) nev
+
+	case('USCfac') 
+	 read(50,*,err=20) uscfac ! logical
 
 	case('TimeEvolutionParam')
 		read(50,*,err=20) kappa2, dt, nt, nw, w1,w2, fft

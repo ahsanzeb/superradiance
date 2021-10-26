@@ -5,7 +5,7 @@
 	implicit none
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
-	public :: mixparity, rdmmol2, rdmf2
+	public :: mixparity, rdmmol2, rdmf2, dipolematrix
 	private :: writeatnode
 	contains
 
@@ -678,6 +678,7 @@
 	 end do
 		! make +- superpositions of the two lowest parity states:
 		! use the two lowest eigenstates to store these.	
+		write(*,*)"ij, ind0, ind1 = ",ij,  ind0, ind1
 	 	proj = 0.0d0;
 	 	sqr2 = dsqrt(1.0d0/2.0d0);
 	  proj(:,1) = eig(ij1+ij)%evec(:,ind0) * sqr2;
@@ -692,6 +693,164 @@
 
 
 
+
+
+!======================================================================
+
+
+
+	!--------------------------------------------------------------------
+	! dipole matrix elements
+	!--------------------------------------------------------------------
+	subroutine dipolematrix(ij1,nj) !,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1,nj !, n,nph, nev 	
+	double precision, dimension(nj,nev,nev) :: dip
+	integer :: ntotb,k1,k2,k1l,k2l,i,k1i,k2i,ij,is
+	integer :: k1f,k2f, js
+	character(len=100) :: fout1
+
+
+
+	fout1 = "dipole-par.dat";
+
+	ntotb = basis%sec(n)%ntot; 
+	! size of the molecular block for every photon state
+
+	dip =0.0d0
+
+	do k1=0,nph-1 ! photon states
+		! init eigenstate
+	  k1i = k1*ntotb! mol block starts
+	  k2i = k1i + ntotb ! mol block ends
+		! final eigenstates
+		k1f = k2i; 
+		k2f = k2i + ntotb; 
+	  
+	  do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	  ! (...,:) for nev lowest eigenstates
+	   do is=1,nev
+	    do js=1,nev
+	    dip(ij,is,js) = dip(ij,is,js) + dsqrt(dble(k1+1))*
+     .                sum(eig(ij1+ij)%evec(k1i+1:k2i,js)*
+     .                   eig(ij1+ij)%evec(k1f+1:k2f,is))
+	    end do ! js
+	   end do ! is
+	  end do! ij
+	end do! k1
+
+
+	! calculate <a> and <a^+a>
+	! write output - serial version at the moment....
+	if(ij1 < -10) then
+		open(12,file=trim(fout1), form="formatted", action="write")
+	else
+		open(12,file=trim(fout1), form="formatted", action="write",
+     .                                      position="append")
+	endif
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	 do js=1,nev
+	 write(12,*) (dip(ij,is,js), is=1,nev)
+	 end do 
+	end do ! ij
+	
+	close(12)
+
+	return
+	end subroutine dipolematrix
+!------------------------------------------------------------------
+
+
+
+
+
+!======================================================================
+	!--------------------------------------------------------------------
+	! singlet fission matrix elements
+	!--------------------------------------------------------------------
+	subroutine sfission(ij1, nj,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj,n,nph,nev
+	double precision,dimension(0:8,0:8,nj,nev) :: dm
+	integer :: jj,i1,i2,ij,p,ntotb, is
+	double precision :: x1, x2 !, ns, nt
+	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
+
+	! LABELS:
+	! i: N-2 mol states;
+	! j1,j2 : N-1 mol states;
+	! k1,k2 : N mol states
+	
+	dm = 0.0d0;
+	ntotb = basis%sec(n)%ntot; ! size of mol block
+	 
+	do i=1,basis%sec(n-2)%ntot; ! N-2 mol state
+	 do n1=0,2; ! states of mol 1
+	   j1 = map(n1,i);  ! N-2 to N-1
+	   do m1=0,2 ! states of mol 2
+	    k1 = map(m1,j1); ! N-1 to N
+	    fn1 = basis%sec(n-1)%f(n1,k1);
+	    if(n1==m1)then
+	     x1 = dsqrt(fn1*(fn1-1)) ! n1=m1
+	    else
+	     fm1 = basis%sec(n-1)%f(m1,k1);
+	     x1 = dsqrt(fn1*fm1)
+	    endif
+	    l1 = 3*n1 + m1 ! combined index for the 2 molecule matrix
+	   do n2=0,2; ! states of mol 1
+	    j2 = map(n2,i); ! N-2 to N-1
+	    do m2=0,2; ! states of mol 2
+	     k2 = map(m2,j2); ! N-1 to N	     
+	     fn2 = basis%sec(n-1)%f(n2,k2);
+	     if(n2==m2)then
+	      x2 = dsqrt(fn2*(fn2-1));
+	     else
+	      fm2 = basis%sec(n-1)%f(m2,k2);
+	      x2 = dsqrt(fn2*fm2);
+	     endif
+			x2 = x2*x1;
+	    l2 = 3*n2 + m2 ! combined index for the 2 molecule matrix
+	    do p=0,nph; ! photon states
+	     i1 = p*ntotb + k1; ! global index
+	     i2 = p*ntotb + k2;
+	     do ij=1,nj! ij1+1,ij1+nj; ! jobs
+	     ! initial state eig0 does not have to be an eigenstate of H
+	     ! eig0(1) * eig(1:nev) : 
+	      dm(l1,l2,ij,:) =  dm(l1,l2,ij,:) + 
+     .          x2 * eig0(ij1+ij)%evec(i1,1) * eig(ij1+ij)%evec(i2,:)
+	     end do ! ij	
+	    end do ! p 
+
+		  end do ! m2
+		 end do ! n2
+		end do ! m1
+	 end do ! n1
+	end do ! i
+
+	! 1/N(N-1) factor:
+	dm = dm/dble(n*(n-1));
+
+
+	! write output files at each node
+	call writeatnode(ij1,nj,8,dm,'sfission') ! 8 for dummy mv=8; 9x9 matrix
+
+	! calculate singlet fission matrix element: rho[n1,n2; m1,m2]: rho[2,1; 0,1]
+	! the indexing used here differs from handwritten notebook ([n1,n2; m1,m2])
+	! n1,m1 ===> n2,m2:  2,0 ===> 1,1 means l1 = 3n1+m1=6; l2=3n2+m2 = 4
+	! write output - serial version at the moment....
+	open(13,file="sfission-2011.dat", form="formatted", 
+     . action="write", position="append")
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	  write(13,*) (dm(6,4,ij,is), is=1,nev)
+	end do ! ij
+
+	close(13)
+	
+	return
+	end subroutine sfission
+!======================================================================
 
 
 
