@@ -5,7 +5,7 @@
 	implicit none
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
-	public :: mixparity, rdmmol2, rdmf2, dipolematrix
+	public :: mixparity, rdmmol2, rdmf2, dipolematrix, sfission
 	private :: writeatnode
 	contains
 
@@ -772,11 +772,12 @@
 	subroutine sfission(ij1, nj,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
-	double precision,dimension(0:8,0:8,nj,nev) :: dm
+	double precision,dimension(0:8,0:8,nj,nev,nev) :: dm
 	integer :: jj,i1,i2,ij,p,ntotb, is
 	double precision :: x1, x2 !, ns, nt
 	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
-
+	integer :: fn1, fn2, fm1, fm2
+	
 	! LABELS:
 	! i: N-2 mol states;
 	! j1,j2 : N-1 mol states;
@@ -790,24 +791,24 @@
 	   j1 = map(n1,i);  ! N-2 to N-1
 	   do m1=0,2 ! states of mol 2
 	    k1 = map(m1,j1); ! N-1 to N
-	    fn1 = basis%sec(n-1)%f(n1,k1);
+	    fn1 = basis%sec(n)%f(n1,k1); ! freq in N-mol states
 	    if(n1==m1)then
-	     x1 = dsqrt(fn1*(fn1-1)) ! n1=m1
+	     x1 = dsqrt(dble(fn1*(fn1-1))) ! n1=m1
 	    else
-	     fm1 = basis%sec(n-1)%f(m1,k1);
-	     x1 = dsqrt(fn1*fm1)
+	     fm1 = basis%sec(n)%f(m1,k1);
+	     x1 = dsqrt(dble(fn1*fm1))
 	    endif
 	    l1 = 3*n1 + m1 ! combined index for the 2 molecule matrix
 	   do n2=0,2; ! states of mol 1
 	    j2 = map(n2,i); ! N-2 to N-1
 	    do m2=0,2; ! states of mol 2
 	     k2 = map(m2,j2); ! N-1 to N	     
-	     fn2 = basis%sec(n-1)%f(n2,k2);
+	     fn2 = basis%sec(n)%f(n2,k2);
 	     if(n2==m2)then
-	      x2 = dsqrt(fn2*(fn2-1));
+	      x2 = dsqrt(dble(fn2*(fn2-1)));
 	     else
-	      fm2 = basis%sec(n-1)%f(m2,k2);
-	      x2 = dsqrt(fn2*fm2);
+	      fm2 = basis%sec(n)%f(m2,k2);
+	      x2 = dsqrt(dble(fn2*fm2));
 	     endif
 			x2 = x2*x1;
 	    l2 = 3*n2 + m2 ! combined index for the 2 molecule matrix
@@ -817,8 +818,11 @@
 	     do ij=1,nj! ij1+1,ij1+nj; ! jobs
 	     ! initial state eig0 does not have to be an eigenstate of H
 	     ! eig0(1) * eig(1:nev) : 
-	      dm(l1,l2,ij,:) =  dm(l1,l2,ij,:) + 
-     .          x2 * eig0(ij1+ij)%evec(i1,1) * eig(ij1+ij)%evec(i2,:)
+	     do is=1,nev
+	     dm(l1,l2,ij,is,1:nev) = dm(l1,l2,ij,is,1:nev) + x2 *
+!     .  eig0%evec(i1,1) * eig(ij1+ij)%evec(i2,1:nev)
+     .  eig(ij1+ij)%evec(i1,is) * eig(ij1+ij)%evec(i2,1:nev)
+     	 end do ! is
 	     end do ! ij	
 	    end do ! p 
 
@@ -828,12 +832,12 @@
 	 end do ! n1
 	end do ! i
 
-	! 1/N(N-1) factor:
-	dm = dm/dble(n*(n-1));
+	! N * 1/N(N-1) factor:
+	dm = dm/dble(n-1);
 
 
 	! write output files at each node
-	call writeatnode(ij1,nj,8,dm,'sfission') ! 8 for dummy mv=8; 9x9 matrix
+!	call writeatnode(ij1,nj,8,dm,'sfission') ! 8 for dummy mv=8; 9x9 matrix
 
 	! calculate singlet fission matrix element: rho[n1,n2; m1,m2]: rho[2,1; 0,1]
 	! the indexing used here differs from handwritten notebook ([n1,n2; m1,m2])
@@ -843,7 +847,9 @@
      . action="write", position="append")
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
-	  write(13,*) (dm(6,4,ij,is), is=1,nev)
+	 do is=1,nev
+	  write(13,*) dm(6,4,ij,is,1:nev)
+	 end do
 	end do ! ij
 
 	close(13)

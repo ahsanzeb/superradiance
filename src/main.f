@@ -19,7 +19,8 @@
 	use diag, only: diagonalise
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
-     .      dipolematrix, parityeig, setparity,	mixparity
+     .      dipolematrix, parityeig, setparity,	mixparity,
+     .      sfission
 	use correlation, only: tcorr, rwallnodesx
 	
 	implicit none
@@ -95,6 +96,8 @@
 	   call groundstate(i, ijob, ij1)
 		elseif(task==101)then
 	   call absorption(i, ijob)
+	  elseif(task==400) then
+	  	 call fission(i,ijob)
 	  else
 	  	 stop "Error(main): task = 101 and 310 only"
 		endif
@@ -553,6 +556,54 @@
 	end select
 	return
 	end subroutine writeout
+
+
+	!.....................................................
+	! singlet exciton fission
+	!.....................................................
+	subroutine fission(i,ijob)
+	implicit none
+	integer, intent(in) :: i,ijob
+
+	if(i==1) then
+	 call HamParts(nsym,nph)
+	endif
+
+	! things need to be done for every job
+	call MakeHhtc(nsym, ijob) ! ijob===> sets wr,delta,lambda,wv values
+	! diagonalise
+	call diagonalise(i)
+
+	call setparity(i-1, 1,nev) ! calc and prints parities of all nev states for all njl jobs
+
+	! set the initial state for fission matrix elements
+	 call seteig00(i)
+
+	call sfission(i-1,1,n,nph,nev)
+	 !call tcorr(dt,w1,w2,nt,nw,i,101)
+	
+	return
+	end subroutine fission
+	!.....................................................
+	!.....................................................
+	subroutine seteig00(i)
+	implicit none
+	integer, intent(in) :: i
+	integer :: n1, n2
+	
+	!save LP_0 at N_ex=m to a new variable eig0
+	if(allocated(eig0%evec)) then
+		deallocate(eig0%evec,eig0%eval)
+	endif
+	n1 = eig(i)%n1;
+	eig0%ntot = n1;
+	eig0%n1 = n1; 
+	eig0%n2 = 1;
+	allocate(eig0%evec(n1,1), eig0%eval(1))
+	eig0%evec(:,1) = eig(i)%evec(:,1)
+	eig0%eval(1) = eig(i)%eval(1)
+	return
+	end subroutine seteig00
 
 
 	end program super
