@@ -5,7 +5,7 @@
 	
 	public :: MakeHhtc, HamParts
 	private:: MakeHgbBlock,MakeHgb
-	private:: MakeHd
+	private:: MakeHd, MakeH1R
 	public :: coocsr, coo2dense
 	contains
  
@@ -184,6 +184,109 @@
 
 
 
+
+
+
+
+
+	!----------------------------------------------------------
+	! two fission sites space 3x3= 9 states
+	! 9x9 blocks made up in the space of the rest of the system (cavity + symmtric molecules)
+	! local indexing for the H1r and Hb1 blocks.
+	! constructs sparse H1r block for one of the fission sites
+	! size of the block is equal to the size of the symmetric space & cavity.
+	subroutine MakeH2(n,nph)
+	implicit none
+	integer, intent(in) :: n,nph
+	double precision:: x,y
+	integer :: nnz, i,p,i1,i2,l,q,n0,n0dn,n0up,j1,j2
+	integer :: ntotsym
+	integer, allocatable, dimension(:) :: lrange
+
+
+	ntotsym = Hg%ntot
+	l = basis%sec(n)%ntot; ! ntotb
+	q = l; ! ntotb
+
+	
+	! indices of symmetric molecular block with ntotb states
+	allocate(lrange(l))
+	lrange = (/ (i, i= 1, l) /); ! ntotb_range
+
+	
+	! total nnz
+	nnz = 2* l * nph !* 2 for co+counter rotating term;
+	! nph instead of nph+1: 
+	!for missing q terms in co and missing q in counter in p=0 and p=nph blocks.
+	
+	Hg1%nnz = nnz
+	! aux arrays to hold data from all p-blocks in coo format
+	if(allocated(Hg1%coo1))deallocate(Hg1%coo1)
+	if(allocated(Hg1%coo2))deallocate(Hg1%coo2)
+	if(allocated(Hg1%coodat))deallocate(Hg1%coodat)
+	allocate(Hg1%coo1(nnz))
+	allocate(Hg1%coo2(nnz))
+	allocate(Hg1%coodat(nnz))
+
+
+	! blocks for soc term
+	Hb1%nnz = ntotsym
+	if(allocated(Hb1%coo1))deallocate(Hb1%coo1)
+	if(allocated(Hb1%coo2))deallocate(Hb1%coo2)
+	if(allocated(Hb1%coodat))deallocate(Hb1%coodat)
+	allocate(Hb1%coo1(nnz))
+	allocate(Hb1%coo2(nnz))
+	allocate(Hb1%coodat(nnz))
+
+	! coo format, local indexing
+
+	i1 = 0;
+	! p=0 and nph cases dealt with seperatly
+	do p=0,nph ! photons
+	 x = dsqrt(dble(p)); ! a^-
+	 y = dsqrt(dble(p+1)) * uscfac; ! a^+
+
+	 ! absolute basis index:
+	 ! n0up, n0dn:   up/dn here refer to changes in photon number
+	 n0 = p*l; 
+	 n0up = (p+1)*l; ! p < nph; 
+	 n0dn = (p-1)*l; ! p > 0
+
+	 ! counter rotating term: a^+ [total q terms]
+	 if(p<nph) then
+		i2 = i1 + q;
+		Hg1%coo1(i1+1:i2) = n0 + lrange;
+		Hg1%coo2(i1+1:i2) = n0up + lrange;			
+		Hg1%coodat(i1+1:i2) = y;
+		i1 = i2;
+	 endif
+		
+	 ! co rotating term: a^- [total q terms]
+	 if(p>0) then
+	  i2 = i1 + q; 
+		H1r%coo1(i1+1:i2) = n0 + lrange;
+		H1r%coo2(i1+1:i2) = n0dn + lrange;	 ! n0dn: one less photon
+		H1r%coodat(i1+1:i2) = x;
+		i1 = i2;
+	 endif
+		
+	end do ! p
+
+	! SOC: sigma^+ tau^-
+	! diagonal block of size Hg%ntot
+	Hb1%coo1(1:ntotsym) = (/ (i, i=1,ntotsym)/);
+	Hb1%coo2(1:ntotsym) = (/ (i, i=1,ntotsym)/);
+	Hb1%coodat(1:ntotsym) = 1.0d0; 
+
+	return
+	end 	subroutine MakeH2
+	!----------------------------------------------------------
+
+
+
+
+
+
 	!----------------------------------------------------------
 	! diagonal parts of cavity-molecule hamiltonian:
 	! Hc for cavity, Hs for singlet molecules, Ht for triplet molecules.
@@ -227,6 +330,10 @@
 	return
 	end 	subroutine MakeHd
 	!----------------------------------------------------------
+
+
+
+
 
 
 
