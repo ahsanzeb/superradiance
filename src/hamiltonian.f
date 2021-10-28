@@ -290,6 +290,7 @@
 	allocate(Hg1f%coo2(Hg1f%nnz))
 	allocate(Hg1f%coodat(Hg1f%nnz))
 
+	! SOC terms for the two fission molecules
 	Hb1f%nnz = 6*Hb1%nnz;
 	if(allocated(Hb1f%coo1))deallocate(Hb1f%coo1)
 	if(allocated(Hb1f%coo2))deallocate(Hb1f%coo2)
@@ -299,7 +300,17 @@
 	allocate(Hb1f%coodat(Hb1f%nnz))
 
 
+	! size of the full hilber space
+	ntot = 9*ntotsym; 
+	! diagonal terms for the two fission molecules
+	if(allocated(Hs1f)) deallocate(Hs1f)
+	allocate(Hs1f(ntot))
+	if(allocated(Ht1f)) deallocate(Ht1f)
+	allocate(Ht1f(ntot)) 
 
+
+
+	
 	p1 = 0; q1=0;
 	do i1=1,3
 	 k1 = (i1-1)*ntotsym
@@ -313,6 +324,10 @@
 	   do j2=1,3
 	    m2 = (j2-1)*ntotsym
 	    !n2 = m2 + ntotsym
+
+	    ! -------------------------------------------------------
+	    !  matter-light coupling
+	    ! -------------------------------------------------------
 
 			! molecule 1: |S1><G1| & diagonal in mol 2
 			if(i1==3 .and. j1==1 .and. i2==j2) then 
@@ -332,6 +347,9 @@
 	     p1 = p2;
 			endif
 
+	    ! -------------------------------------------------------
+	    !  Spin-orbit coupling
+	    ! -------------------------------------------------------
 
 			! molecule 1: |S1><T1| & diagonal in mol 2
 			if(i1==2 .and. j1==1 .and. i2==j2) then 
@@ -351,18 +369,41 @@
 	     q1 = q2;
 			endif
 
-
-
 	   end do
 	  end do
 	 end do
 	end do
 
+	! -------------------------------------------------------
+	! diagonal terms for the two fisison molecules
+	! ws and wt terms
+	! -------------------------------------------------------
+	do i1=1,3
+	 do i2=1,3
+	 ! global starting index (in full 9*ntotsym dim space) of the blocks
+	 k = (i1-1)*3*ntotsym + (i2-1)*ntotsym
 
+	 ! T
+	 if(i1==2 .and. i2==2) then
+		Ht1f(k+1:k+ntotsym) = (/(2.0d0, i=1,ntotsym) /)
+	 else
+	  if(i1==2) Ht1f(k+1:k+ntotsym) = (/(1.0d0, i=1,ntotsym) /)
+	  if(i2==2) Ht1f(k+1:k+ntotsym) = (/(1.0d0, i=1,ntotsym) /)
+	 endif
 
+	 ! S
+	 if(i1==3 .and. i2==3) then
+		Hs1f(k+1:k+ntotsym) = (/(2.0d0, i=1,ntotsym) /)
+	 else
+	  if(i1==3) Hs1f(k+1:k+ntotsym) = (/(1.0d0, i=1,ntotsym) /)
+	  if(i2==3) Hs1f(k+1:k+ntotsym) = (/(1.0d0, i=1,ntotsym) /)
+	 endif
 
+	 end do
+	end do
+	! -------------------------------------------------------
 
-
+	
 
 
 	return
