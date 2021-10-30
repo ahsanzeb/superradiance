@@ -887,11 +887,11 @@
 	! nothing happens in the symmetric space, so the perturbation V_{fission}
 	! is diagonal in the symmetric space 
 	!--------------------------------------------------------------------
-	subroutine sfission(ij1, nj,n,nph,nev)
+	subroutine sfission(ij1, nj) !,n,nph,nev)
 	implicit none
-	integer, intent(in) :: ij1, nj,n,nph,nev
+	integer, intent(in) :: ij1, nj !,n,nph,nev
 	double precision,dimension(nj,nev,nev) :: dm
-	integer :: jj,i1,i2,ij,p,ntotb, is
+	integer :: jj,i1,i2,ij,p,ntotb, is, js
 	double precision :: x1, x2 !, ns, nt
 	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
 	integer :: fn1, fn2, fm1, fm2, ntotsym
@@ -918,14 +918,14 @@
 	 do is=1,nev
 	  do js=1,nev
 	   dm(ij,is,js) = dm(ij,is,js) +
-     .  eig(ij1+ij)%evec(k1+1:l1,is) * 
-     .  eig(ij1+ij)%evec(k2+1:l2,js)
+     .  sum(eig(ij1+ij)%evec(k1+1:l1,is) * 
+     .  eig(ij1+ij)%evec(k2+1:l2,js))
 	  end do ! js
 	 end do ! is
 	end do ! ij	
 
 	! write output - serial version at the moment....
-	open(13,file="sfission-2011.dat", form="formatted", 
+	open(13,file="sfission.dat", form="formatted", 
      . action="write", position="append")
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs

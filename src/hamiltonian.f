@@ -334,36 +334,28 @@
 	
 	p1 = 0; q1=0;
 	do i1=1,3
-	 k1 = (i1-1)*ntotsym
-	 !l1 = k1 + ntotsym
 	 do j1=1,3
-	  m1 = (j1-1)*ntotsym
-	  !n1 = m1 + ntotsym
 	  do i2=1,3
-	   k2 = (i2-1)*ntotsym
-	   !l2 = k2 + ntotsym
 	   do j2=1,3
-	    m2 = (j2-1)*ntotsym
-	    !n2 = m2 + ntotsym
-
+	    ! location of the initial and final blocks
+	 	  k1 = (i1-1)*3*ntotsym + (i2-1)*ntotsym; ! row
+	 	  k2 = (j1-1)*3*ntotsym + (j2-1)*ntotsym; ! col
 	    ! -------------------------------------------------------
 	    !  matter-light coupling
 	    ! -------------------------------------------------------
-
 			! molecule 1: |S1><G1| & diagonal in mol 2
 			if(i1==3 .and. j1==1 .and. i2==j2) then 
 			 p2 = p1 + Hg1%nnz;
 	     Hg1f%coo1(p1+1:p2) = k1 + Hg1%coo1
-	     Hg1f%coo2(p1+1:p2) = m1 + Hg1%coo2
+	     Hg1f%coo2(p1+1:p2) = k2 + Hg1%coo2
 	     Hg1f%coodat(p1+1:p2) = Hg1%coodat
 	     p1 = p2;
 			endif
-
 			! molecule 2: |S2><G2| & diagonal in mol 1
 			if(i2==3 .and. j2==1 .and. i1==j1) then 
 			 p2 = p1 + Hg1%nnz;
-	     Hg1f%coo1(p1+1:p2) = k2 + Hg1%coo1
-	     Hg1f%coo2(p1+1:p2) = m2 + Hg1%coo2
+	     Hg1f%coo1(p1+1:p2) = k1 + Hg1%coo1
+	     Hg1f%coo2(p1+1:p2) = k2 + Hg1%coo2
 	     Hg1f%coodat(p1+1:p2) = Hg1%coodat
 	     p1 = p2;
 			endif
@@ -371,12 +363,11 @@
 	    ! -------------------------------------------------------
 	    !  Spin-orbit coupling
 	    ! -------------------------------------------------------
-
 			! molecule 1: |S1><T1| & diagonal in mol 2
 			if(i1==2 .and. j1==1 .and. i2==j2) then 
 			 q2 = q1 + Hb1%nnz;
 	     Hb1f%coo1(q1+1:q2) = k1 + Hb1%coo1
-	     Hb1f%coo2(q1+1:q2) = m1 + Hb1%coo2
+	     Hb1f%coo2(q1+1:q2) = k2 + Hb1%coo2
 	     Hb1f%coodat(q1+1:q2) = Hb1%coodat
 	     q1 = q2;
 			endif
@@ -384,10 +375,8 @@
 			! molecule 2: |S2><T2| & diagonal in mol 1
 			if(i2==2 .and. j2==1 .and. i1==j1) then 
 			 q2 = q1 + Hb1%nnz;
-			 !write(*,*) "ntotsym = ", ntotsym
-			 !write(*,*)"Hb1%nnz,size(Hb1%coo1):", Hb1%nnz, size(Hb1%coo1)
-	     Hb1f%coo1(q1+1:q2) = k2 + Hb1%coo1
-	     Hb1f%coo2(q1+1:q2) = m2 + Hb1%coo2
+	     Hb1f%coo1(q1+1:q2) = k1 + Hb1%coo1
+	     Hb1f%coo2(q1+1:q2) = k2 + Hb1%coo2
 	     Hb1f%coodat(q1+1:q2) = Hb1%coodat
 	     q1 = q2;
 			endif
@@ -396,17 +385,6 @@
 	  end do
 	 end do
 	end do
-
-	!write(*,*) "p1,q1 = ",p1,q1
-	!write(*,*) "6*Hg1%nnz, 6*Hb1%nnz = ", 6*Hg1%nnz, 6*Hb1%nnz
-
-	!write(*,*) "=================================="
-	!write(*,*) Hg%coo1
-	!write(*,*) Hg%coo2
-	!write(*,*) "=================================="
-	!write(*,*) Hb%coo1
-	!write(*,*) Hb%coo2
-	!write(*,*) "=================================="
 
 	! -------------------------------------------------------
 	! diagonal terms for the two fisison molecules

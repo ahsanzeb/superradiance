@@ -626,6 +626,9 @@
 	! set parity and mix marity here req new routines that consider the two fission sites.
 	! might write these later...
 
+
+	call sfission(i-1,1)
+
 	return
 	end 	subroutine gsfission
 	!.....................................................
