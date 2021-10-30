@@ -15,7 +15,7 @@
 	use modmain
 	use maps, only: getmap, writemap
 	use bases, only: PermSymBasis, writebasis, writebasisf
-	use hamiltonian, only: MakeHhtc, HamParts
+	use hamiltonian, only: MakeHhtc, HamParts, MakeHhtcf, HamPartsfis
 	use diag, only: diagonalise
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
@@ -97,7 +97,7 @@
 		elseif(task==101)then
 	   call absorption(i, ijob)
 	  elseif(task==400) then
-	  	 call fission(i,ijob)
+	  	 call gsfission(i, ijob)
 	  else
 	  	 stop "Error(main): task = 101 and 310 only"
 		endif
@@ -605,5 +605,31 @@
 	return
 	end subroutine seteig00
 
+
+
+	!.....................................................
+	! takes 2 extra molecules with full 3x3=9 states 
+	! calc eigenstates and fission matrix elements
+	subroutine gsfission(i, ijob)
+	implicit none
+	integer, intent(in) :: i, ijob
+
+	! first job? calculate Hamiltonian's parts. 
+		if(i==1) then
+			call HamPartsfis(nsym,nph)
+		endif
+	! things need to be done for every job
+	call MakeHhtcf(nsym, ijob) ! ijob===> sets wr,delta,lambda,wv values
+	! diagonalise
+	call diagonalise(i)
+
+	call setparity(i, 1,nev) ! calc and prints parities of all nev states for all njl jobs
+		! now make the superpositions for the two lowest parity states
+		! and work out everything for the +- superpositions.
+	call mixparity(i, 1,nev) ! makes +,- superpositions of even and odd parity eigenstates to make states that have non-zero expectation of photon annihilation operator in the superradiance phase.
+
+	return
+	end 	subroutine gsfission
+	!.....................................................
 
 	end program super

@@ -146,8 +146,11 @@
 	
 !	type(Ham), allocatable:: Hg
 	type(Ham) :: Hhtc, Hg, Hb, Hf ! off-diagonal terms
+	type(Ham) :: Hg1, Hb1, Hg1f, Hb1f ! off-diagonal terms
+
 	!diagonal terms, simple forms, maybe taken as simple arrays... 
 	double precision, dimension(:), allocatable :: Hc,Hs,Ht, Hdv
+	double precision, dimension(:), allocatable :: Hc1f,Hs1f,Ht1f
 
 	double precision, dimension(:,:,:,:), allocatable :: dmup, dmdn
 
