@@ -6,7 +6,7 @@
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
 	public :: mixparity, rdmmol2, rdmf2, dipolematrix, sfissionsym
-	public :: sfission
+	public :: fmatelem
 	private :: writeatnode
 	contains
 

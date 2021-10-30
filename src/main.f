@@ -20,8 +20,8 @@
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
      .      dipolematrix, parityeig, setparity,	mixparity,
-     .      sfissionsym, sfission
-	use correlation, only: tcorr, rwallnodesx
+     .      sfissionsym, fmatelem
+	use correlation, only: tcorr, rwallnodesx, evolve
 	
 	implicit none
 
@@ -92,15 +92,16 @@
 		endif
 		ijob = jobs(node)%i1+i-1
 
-		if(task==310) then
+	select case(task)
+		case(310)
 	   call groundstate(i, ijob, ij1)
-		elseif(task==101)then
+		case(101)
 	   call absorption(i, ijob)
-	  elseif(task==400) then
+		case(400,401,402,403)
 	  	 call gsfission(i, ijob)
-	  else
-	  	 stop "Error(main): task = 101 and 310 only"
-		endif
+		case default
+	  	 stop "Error(main): task = 101,310, 401-403 only"
+	end select 
 		
 	  if(i==1) then
 	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"

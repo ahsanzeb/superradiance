@@ -2,7 +2,7 @@
 	module correlation
 	use modmain, only: Hf, eig, kappa2,prntstep,fft,
      .							 task, eig0, basis, nsym, nph, ntotb, ntot,
-     .							 fmatelem
+     .							nev, nph, n
 	implicit none
 
 	public :: tcorr
@@ -463,11 +463,7 @@
 	!write(6,*)'Hf%Col(:) = ', Hf%Col(:)
 	
 	! construct init state for time evolution
-	if(task == 101) then 	!absorption...
-		call makepsi0ad(ij0)
-	else
-		stop "correlation: task =101 only"
-	endif
+	psi0 = eig0%evec(:,1);
 
 	write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
 	!write(6,*)'kappa2 = ',kappa2r
@@ -482,7 +478,7 @@
 
 
 	! time step 1:
-	call fmatelem(ij0-1,1,ts(1)) ! fission matrix elements
+	call fmatelemtd(ij0-1,1,ts(1)) ! fission matrix elements
 	call fPairProb(ij0-1,1,ts(1)) ! fission pair probabilities
 
 
@@ -501,7 +497,7 @@
 			write(6,'(a20,2x,i10,a10,i10)') ' time evolution step ',i,
      .  ' out of ',nt
 			write(6,'(a,E15.10)')'|psit|/|psi| =', psitnorm(i)/psitnorm(1)
-	   call fmatelem(ij0-1,1,ts(i)) ! fission matrix elements
+	   call fmatelemtd(ij0-1,1,ts(i)) ! fission matrix elements
 	   call fPairProb(ij0-1,1,ts(i)) ! fission pair probabilities
 		endif
 
@@ -547,7 +543,7 @@
 	implicit none
 	integer, intent(in) :: ij1, nj !,n,nph,nev
 	double precision, intent(in) :: time
-	double precision,dimension(nj,nev,nev) :: dm
+	double precision,dimension(nj,nev) :: dm
 	integer :: jj,i1,i2,ij,p,ntotb, is, js
 	double precision :: x1, x2 !, ns, nt
 	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
@@ -588,6 +584,51 @@
 	
 	return
 	end subroutine fmatelemtd
+!======================================================================
+
+
+
+
+
+
+
+!======================================================================
+	!--------------------------------------------------------------------
+	! for the time evolved state:
+	! Probabilities to have an SG, SS, TT, etc...? 
+	! and molecular S/T polulations. 
+	! From the elements of the reduced density matrix of the two fission molecules 
+	!--------------------------------------------------------------------
+	subroutine fPairProb(ij1, nj, time) !,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj !,n,nph,nev
+	double precision, intent(in) :: time
+	double precision,dimension(nj,9) :: dm
+	integer :: i1,i2,ij, j1,j2, k1,k2, ntotsym
+	
+	dm = 0.0d0;
+	ntotsym = (nph+1)*basis%sec(n)%ntot; ! size of the symmetric space block
+
+	! matrix elemets of V_{fission}
+	do ij=1,nj ! jobs
+	 do i1 = 1,9
+	 	k1 = (i1-1)*ntotsym
+		k2 = k1 + ntotsym
+	   dm(ij,i1) = dm(ij,i1) +
+     .  sum(psit(k1+1:k2) * psit(k1+1:k2))
+	 end do
+	end do ! ij	
+
+	! write output - serial version at the moment....
+	open(13,file="tw-mol-pop.dat", form="formatted", 
+     . action="write", position="append")
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	  write(13,*) time, dm(ij,1:9)
+	end do
+	close(13)
+	
+	return
+	end subroutine fPairProb
 !======================================================================
 
 	end module correlation
