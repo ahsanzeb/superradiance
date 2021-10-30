@@ -5,7 +5,8 @@
 	implicit none
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
-	public :: mixparity, rdmmol2, rdmf2, dipolematrix, sfission
+	public :: mixparity, rdmmol2, rdmf2, dipolematrix, sfissionsym
+	public :: sfission
 	private :: writeatnode
 	contains
 
@@ -783,9 +784,9 @@
 
 !======================================================================
 	!--------------------------------------------------------------------
-	! singlet fission matrix elements
+	! singlet fission matrix elements, (old) symmetric space version
 	!--------------------------------------------------------------------
-	subroutine sfission(ij1, nj,n,nph,nev)
+	subroutine sfissionsym(ij1, nj,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj,n,nph,nev
 	double precision,dimension(0:8,0:8,nj,nev,nev) :: dm
@@ -865,6 +866,71 @@
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	 do is=1,nev
 	  write(13,*) dm(6,4,ij,is,1:nev)
+	 end do
+	end do ! ij
+
+	close(13)
+	
+	return
+	end subroutine sfissionsym
+!======================================================================
+
+
+
+
+
+
+
+!======================================================================
+	!--------------------------------------------------------------------
+	! singlet fission matrix elements, on the two fission molecules
+	! nothing happens in the symmetric space, so the perturbation V_{fission}
+	! is diagonal in the symmetric space 
+	!--------------------------------------------------------------------
+	subroutine sfission(ij1, nj,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj,n,nph,nev
+	double precision,dimension(nj,nev,nev) :: dm
+	integer :: jj,i1,i2,ij,p,ntotb, is
+	double precision :: x1, x2 !, ns, nt
+	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
+	integer :: fn1, fn2, fm1, fm2, ntotsym
+	
+	dm = 0.0d0;
+	ntotsym = (nph+1)*basis%sec(n)%ntot; ! size of the symmetric space block
+	! -------------------------------------------------------
+	!  Singlet fission : V_{fission} = |T,T><S,G| x I_{symmetric space}
+	! -------------------------------------------------------
+	! molecular states' indexing for the two fission molecules: 
+	! 1=G, 2=T, 3=S
+	i1=3; j1=1; ! S, G [mol 1]
+	i2=2; j2=2; ! T, T [mol 2]
+	! location of the symmetric space block [for which V_{fission} is diagonal]
+	! init state block range k1+1:l1
+	k1 = (i1-1)*3*ntotsym + (j1-1)*ntotsym
+	l1 = k1 + ntotsym;
+	! finall state block range k2+1:l2
+	k2 = (i2-1)*3*ntotsym + (j2-1)*ntotsym
+	l2 = k2 + ntotsym;
+
+	! matrix elemets of V_{fission}
+	do ij=1,nj ! jobs
+	 do is=1,nev
+	  do js=1,nev
+	   dm(ij,is,js) = dm(ij,is,js) +
+     .  eig(ij1+ij)%evec(k1+1:l1,is) * 
+     .  eig(ij1+ij)%evec(k2+1:l2,js)
+	  end do ! js
+	 end do ! is
+	end do ! ij	
+
+	! write output - serial version at the moment....
+	open(13,file="sfission-2011.dat", form="formatted", 
+     . action="write", position="append")
+
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	 do is=1,nev
+	  write(13,*) dm(ij,is,1:nev)
 	 end do
 	end do ! ij
 

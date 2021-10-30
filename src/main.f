@@ -20,7 +20,7 @@
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
      .      dipolematrix, parityeig, setparity,	mixparity,
-     .      sfission
+     .      sfissionsym, sfission
 	use correlation, only: tcorr, rwallnodesx
 	
 	implicit none
@@ -561,7 +561,7 @@
 	!.....................................................
 	! singlet exciton fission
 	!.....................................................
-	subroutine fission(i,ijob)
+	subroutine fissionsym(i,ijob)
 	implicit none
 	integer, intent(in) :: i,ijob
 
@@ -579,11 +579,11 @@
 	! set the initial state for fission matrix elements
 	 call seteig00(i)
 
-	call sfission(i-1,1,n,nph,nev)
+	call sfissionsym(i-1,1,n,nph,nev)
 	 !call tcorr(dt,w1,w2,nt,nw,i,101)
 	
 	return
-	end subroutine fission
+	end subroutine fissionsym
 	!.....................................................
 	!.....................................................
 	subroutine seteig00(i)
@@ -626,9 +626,6 @@
 	! set parity and mix marity here req new routines that consider the two fission sites.
 	! might write these later...
 
-
-
-	
 	return
 	end 	subroutine gsfission
 	!.....................................................
