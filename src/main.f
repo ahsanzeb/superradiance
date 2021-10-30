@@ -605,6 +605,71 @@
 	return
 	end subroutine seteig00
 
+	!.....................................................
+	subroutine seteig0f(i)
+	implicit none
+	integer, intent(in) :: i
+	integer :: n1, n2, i1,i2,k1,ntotsym
+
+	if(allocated(eig0%evec)) then
+		deallocate(eig0%evec,eig0%eval)
+	endif
+	n1 = eig(i)%n1;
+	eig0%ntot = n1;
+	eig0%n1 = n1; 
+	eig0%n2 = 1;
+	allocate(eig0%evec(n1,1), eig0%eval(1))
+	eig0%eval(1) = 0.0d0; !eig(i)%eval(1)
+
+
+
+	if(task==401) then
+	! ------------------------------------------------
+	! a singlet photon in the cavity
+	!   = |GG> x |GGGG....G> x |1P>
+	! ------------------------------------------------
+	! first block in 9x9, second subblock of basis%sec(n)%ntot size has 1 photon, its first state is |GGGGG....G>
+	k1 = basis%sec(n)%ntot + 1; ! 1*ntotb + 1
+	eig0%evec(:,1) = 0.0d0;
+	eig0%evec(k1,1) = 1.0d0;
+	! ------------------------------------------------
+	
+	elseif(task==402) then
+	! ------------------------------------------------
+	! a singlet exciton at mol 1 in the fission pair
+	! ------------------------------------------------
+	! location of the symmetric block
+	i1 = 3; ! S
+	i2 = 1; ! G
+	k1 = (i1-1)*3*ntotsym + (i2-1)*ntotsym;
+	! location of 0-excitation state in the sym space
+	!jj = 1; ! sym space state with |GGGGGG...G>
+	!p = 0; ! cavity state
+	! global index:
+	k1 = k1 + 1 ; ! 1 = p*basis%sec(n)%ntot + jj;	
+	eig0%evec(:,1) = 0.0d0;
+	eig0%evec(k1,1) = 1.0d0;	
+	! ------------------------------------------------
+	
+	elseif(task==403) then
+	! ------------------------------------------------
+	! a triplet exciton at mol 1 in the fission pair
+	! ------------------------------------------------
+	! location of the symmetric block
+	i1 = 2; ! S
+	i2 = 1; ! G
+	k1 = (i1-1)*3*ntotsym + (i2-1)*ntotsym;
+	! global index:
+	k1 = k1 + 1 ; ! 1 = p*basis%sec(n)%ntot + jj;	
+	eig0%evec(:,1) = 0.0d0;
+	eig0%evec(k1,1) = 1.0d0;	
+	! ------------------------------------------------
+	endif
+
+	return
+	end subroutine seteig0f
+	!.....................................................
+
 
 
 	!.....................................................
