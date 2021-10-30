@@ -623,11 +623,12 @@
 	! diagonalise
 	call diagonalise(i)
 
-	call setparity(i, 1,nev) ! calc and prints parities of all nev states for all njl jobs
-		! now make the superpositions for the two lowest parity states
-		! and work out everything for the +- superpositions.
-	call mixparity(i, 1,nev) ! makes +,- superpositions of even and odd parity eigenstates to make states that have non-zero expectation of photon annihilation operator in the superradiance phase.
+	! set parity and mix marity here req new routines that consider the two fission sites.
+	! might write these later...
 
+
+
+	
 	return
 	end 	subroutine gsfission
 	!.....................................................

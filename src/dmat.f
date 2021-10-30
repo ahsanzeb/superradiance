@@ -587,6 +587,19 @@
 
 
 	!--------------------------------------------------------------------
+	! build the parity eigenstates, fission case with two extra molecules
+	!--------------------------------------------------------------------
+	subroutine parityeigf()
+	implicit none
+
+	return
+	end subroutine parityeigf
+!------------------------------------------------------------------
+
+
+
+
+	!--------------------------------------------------------------------
 	! fix the parity of the energy eigenstates by projecting onto 
 	! even or odd parity sectors and normalising. 
 	!--------------------------------------------------------------------
@@ -610,6 +623,9 @@
 	do ij=1,nj
 	 do is=1,nev
 	 	proj = 0.0d0;
+	 	!write(*,*)"ij1+ij = ", ij1+ij
+	  !write(*,*) size(eigp(:,1)), size(eig(ij1+ij)%evec(:,is))
+	 	
 	  proj(:,1) = eigp(:,1) * eig(ij1+ij)%evec(:,is);
 	  proj(:,2) = eigp(:,2) * eig(ij1+ij)%evec(:,is);
 		w1 = sum(dabs(proj(:,1))**2); ! weight on odd

@@ -238,9 +238,9 @@
 	if(allocated(Hg1%coo1))deallocate(Hg1%coo1)
 	if(allocated(Hg1%coo2))deallocate(Hg1%coo2)
 	if(allocated(Hg1%coodat))deallocate(Hg1%coodat)
-	allocate(Hg1%coo1(nnz))
-	allocate(Hg1%coo2(nnz))
-	allocate(Hg1%coodat(nnz))
+	allocate(Hg1%coo1(Hg1%nnz))
+	allocate(Hg1%coo2(Hg1%nnz))
+	allocate(Hg1%coodat(Hg1%nnz))
 
 
 	! blocks for soc term
@@ -248,9 +248,9 @@
 	if(allocated(Hb1%coo1))deallocate(Hb1%coo1)
 	if(allocated(Hb1%coo2))deallocate(Hb1%coo2)
 	if(allocated(Hb1%coodat))deallocate(Hb1%coodat)
-	allocate(Hb1%coo1(nnz))
-	allocate(Hb1%coo2(nnz))
-	allocate(Hb1%coodat(nnz))
+	allocate(Hb1%coo1(Hb1%nnz))
+	allocate(Hb1%coo2(Hb1%nnz))
+	allocate(Hb1%coodat(Hb1%nnz))
 
 	! coo format, local indexing
 
@@ -268,7 +268,7 @@
 
 	 ! counter rotating term: a^+ [total q terms]
 	 if(p<nph) then
-		i2 = i1 + q;
+		i2 = i1 + l;
 		Hg1%coo1(i1+1:i2) = n0 + lrange;
 		Hg1%coo2(i1+1:i2) = n0up + lrange;			
 		Hg1%coodat(i1+1:i2) = y;
@@ -277,7 +277,7 @@
 		
 	 ! co rotating term: a^- [total q terms]
 	 if(p>0) then
-	  i2 = i1 + q; 
+	  i2 = i1 + l; 
 		Hg1%coo1(i1+1:i2) = n0 + lrange;
 		Hg1%coo2(i1+1:i2) = n0dn + lrange;	 ! n0dn: one less photon
 		Hg1%coodat(i1+1:i2) = x;
@@ -318,6 +318,7 @@
 
 	! size of the full hilber space
 	ntot = 9*ntotsym; 
+	Hg1f%ntot = ntot;
 	! diagonal terms for the two fission molecules. 
 	! Later, will also add the diagonal terms for other molecules
 	if(allocated(Hs1f)) deallocate(Hs1f)
@@ -351,7 +352,7 @@
 
 			! molecule 1: |S1><G1| & diagonal in mol 2
 			if(i1==3 .and. j1==1 .and. i2==j2) then 
-			 p2 = p1 + ntotsym;
+			 p2 = p1 + Hg1%nnz;
 	     Hg1f%coo1(p1+1:p2) = k1 + Hg1%coo1
 	     Hg1f%coo2(p1+1:p2) = m1 + Hg1%coo2
 	     Hg1f%coodat(p1+1:p2) = Hg1%coodat
@@ -360,7 +361,7 @@
 
 			! molecule 2: |S2><G2| & diagonal in mol 1
 			if(i2==3 .and. j2==1 .and. i1==j1) then 
-			 p2 = p1 + ntotsym;
+			 p2 = p1 + Hg1%nnz;
 	     Hg1f%coo1(p1+1:p2) = k2 + Hg1%coo1
 	     Hg1f%coo2(p1+1:p2) = m2 + Hg1%coo2
 	     Hg1f%coodat(p1+1:p2) = Hg1%coodat
@@ -373,19 +374,21 @@
 
 			! molecule 1: |S1><T1| & diagonal in mol 2
 			if(i1==2 .and. j1==1 .and. i2==j2) then 
-			 q2 = q1 + ntotsym;
-	     Hg1f%coo1(q1+1:q2) = k1 + Hg1%coo1
-	     Hg1f%coo2(q1+1:q2) = m1 + Hg1%coo2
-	     Hg1f%coodat(q1+1:q2) = Hg1%coodat
+			 q2 = q1 + Hb1%nnz;
+	     Hb1f%coo1(q1+1:q2) = k1 + Hb1%coo1
+	     Hb1f%coo2(q1+1:q2) = m1 + Hb1%coo2
+	     Hb1f%coodat(q1+1:q2) = Hb1%coodat
 	     q1 = q2;
 			endif
 
 			! molecule 2: |S2><T2| & diagonal in mol 1
 			if(i2==2 .and. j2==1 .and. i1==j1) then 
-			 q2 = q1 + ntotsym;
-	     Hg1f%coo1(q1+1:q2) = k2 + Hg1%coo1
-	     Hg1f%coo2(q1+1:q2) = m2 + Hg1%coo2
-	     Hg1f%coodat(q1+1:q2) = Hg1%coodat
+			 q2 = q1 + Hb1%nnz;
+			 !write(*,*) "ntotsym = ", ntotsym
+			 !write(*,*)"Hb1%nnz,size(Hb1%coo1):", Hb1%nnz, size(Hb1%coo1)
+	     Hb1f%coo1(q1+1:q2) = k2 + Hb1%coo1
+	     Hb1f%coo2(q1+1:q2) = m2 + Hb1%coo2
+	     Hb1f%coodat(q1+1:q2) = Hb1%coodat
 	     q1 = q2;
 			endif
 
@@ -393,6 +396,17 @@
 	  end do
 	 end do
 	end do
+
+	!write(*,*) "p1,q1 = ",p1,q1
+	!write(*,*) "6*Hg1%nnz, 6*Hb1%nnz = ", 6*Hg1%nnz, 6*Hb1%nnz
+
+	!write(*,*) "=================================="
+	!write(*,*) Hg%coo1
+	!write(*,*) Hg%coo2
+	!write(*,*) "=================================="
+	!write(*,*) Hb%coo1
+	!write(*,*) Hb%coo2
+	!write(*,*) "=================================="
 
 	! -------------------------------------------------------
 	! diagonal terms for the two fisison molecules
@@ -864,12 +878,15 @@
 	Hf%dense = .false.
 	Hf%ntot = Hg1f%ntot ! dimension of full hilbert space
 	Hf%nnz = Hhtc%nnz; 
+	!write(*,*) "Hf%ntot .le. nmaxddiag .and. ddiagOK"
+	!write(*,*) Hf%ntot, nmaxddiag, ddiagOK	
 	if (Hf%ntot .le. nmaxddiag .and. ddiagOK) then 
 		! Hhtc in dense format and use direct diagonalisation
 		Hf%dense = .true.
 		n1 =Hf%ntot;
 		if(allocated(Hf%h))deallocate(Hf%h)
 		allocate(Hf%h(n1,n1))
+		!write(*,*) "coo2dense calling... "
 		call coo2dense(n1, n2, Hhtc%coo1(1:n2),
      .      Hhtc%coo2(1:n2),Hhtc%coodat(1:n2), Hf%h)
 
@@ -889,6 +906,13 @@
 		allocate(Hf%col(nnz))
 		allocate(Hf%dat(nnz))
 		allocate(Hf%rowpntr(Hf%ntot + 1))
+
+	 ! write(*,*) "coo2csr: Hf%ntot, Hf%nnz = ", Hf%ntot, Hf%nnz
+	!	write(*,*) "**** coo1 ********************************"
+	!write(*,*) Hhtc%coo1
+	!	write(*,*) "******coo2 ****************************"
+	!write(*,*) Hhtc%coo2
+	
 		call coocsr(Hf%ntot, Hf%nnz, 
      .  Hhtc%coodat, Hhtc%coo1, Hhtc%coo2,  
      .  Hf%dat, Hf%col, Hf%rowpntr)
