@@ -1,7 +1,8 @@
 
 	module correlation
 	use modmain, only: Hf, eig, kappa2,prntstep,fft,
-     .							 task, eig0, basis, nsym, nph, ntotb, ntot
+     .							 task, eig0, basis, nsym, nph, ntotb, ntot,
+     .							 fmatelem
 	implicit none
 
 	public :: tcorr
@@ -401,7 +402,193 @@
 	return
 	end 	subroutine rwallnodesx
 	!=============================================================
+	! time evolution for tasks 4xx series. modified from tcorr()
+	subroutine evolve(dt0,w1,w2,nt0,nw0,ij0, task,nstepf) 
+	implicit none
+	double precision, intent(in) :: dt0,w1,w2
+	integer, intent(in) :: nt0,nw0, ij0
+	integer, intent(in):: task, nstepf
+	! local
+	integer :: i, nsize
+	double precision:: dw
+	double complex :: e0dt
+	
+	dt = dt0;	
+	nt = nt0;
+	if(fft) then
+		nw = nt0; !FFTW: nw0;
+	else
+		nw = nw0;
+	endif
+	ij = ij0;
 
+	! set variables for RKK4 integration
+	dth = dt/2.0d0;
+	dt6 = dt/6.0d0;
+	iotam = (0.0d0,-1.0d0);
+
+	kappa2r = kappa2 !/m;
+	
+	allocate(corrt(nt))
+	allocate(psitnorm(nt))
+	allocate(ws(nw))
+	!allocate(wss(nw))
+	allocate(ts(nt))
+	
+	! calc ws: frequencies....
+	ws = 0.0d0;
+	twopi= 2.0d0*3.14159265359d0;
+	if(fft) then
+		dw = twopi/(nt*dt); !(w2-w1)*1.0d0/nw;
+	else
+		dw = (w2-w1)*1.0d0/(nw-1);
+	endif
+
+	do i=1,nw
+		!ws(i) = w1 + (i-1)*dw 
+		ws(i) =  w1 + (i-1)*dw 
+	end do
+	! calc ts: times
+	ts=0.0d0;
+	do i=1,nt
+		ts(i) = (i-1)*dt 
+	end do
+
+	! ntot given in input will be either global ntot or global ntotg
+	! depending on the task.
+	allocate(psi0(ntot))
+	allocate(psit(ntot))
+
+	!write(6,*)'tcorr: ntot, Hf%ntot = ',ntot, Hf%ntot
+	!write(6,*)'Hf%Col(:) = ', Hf%Col(:)
+	
+	! construct init state for time evolution
+	if(task == 101) then 	!absorption...
+		call makepsi0ad(ij0)
+	else
+		stop "correlation: task =101 only"
+	endif
+
+	write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
+	!write(6,*)'kappa2 = ',kappa2r
+	
+	! set psi0 and corr(t=0)
+	psitnorm(1) = real(DOT_PRODUCT(psi0, psi0));
+	psi0 = psi0/dsqrt(psitnorm(1));
+	psitnorm(1)=1.0d0;
+	psit(:) = psi0(:);
+	corrt(1) = dcmplx(1.0, 0.0); !DOT_PRODUCT(psi0, psit);  
+
+
+
+	! time step 1:
+	call fmatelem(ij0-1,1,ts(1)) ! fission matrix elements
+	call fPairProb(ij0-1,1,ts(1)) ! fission pair probabilities
+
+
+
+	e0dt = (-iotam*eig0%eval(1)-kappa2r)*dt;
+	
+	write(6,'(a,f15.10)')'ELP= ',eig(ij0)%eval(1);
+	do i=2,nt
+		call rk4step(psit)
+
+		phase = zexp((i-1)*e0dt);
+		corrt(i) = DOT_PRODUCT(psi0, psit) * phase
+		psitnorm(i) = real(DOT_PRODUCT(psit, psit))
+
+		if (mod(i,nstepf) == 0) then
+			write(6,'(a20,2x,i10,a10,i10)') ' time evolution step ',i,
+     .  ' out of ',nt
+			write(6,'(a,E15.10)')'|psit|/|psi| =', psitnorm(i)/psitnorm(1)
+	   call fmatelem(ij0-1,1,ts(i)) ! fission matrix elements
+	   call fPairProb(ij0-1,1,ts(i)) ! fission pair probabilities
+		endif
+
+		
+		if (mod(i,prntstep) == 0) then
+			write(6,'(a20,2x,i10,a10,i10)') ' time evolution step ',i,
+     .  ' out of ',nt
+			write(6,'(a,E15.10)')'|psit|/|psi| =', psitnorm(i)/psitnorm(1)
+		endif
+
+		if(psitnorm(i) > 10.0*psitnorm(1)) then
+			write(*,*)'corr: RKK4 diverging... stopping..., decrease dt'
+			write(*,*)'corr: psitnorm = ', psitnorm(i)
+			stop
+		endif
+	end do
+
+	!call writecorrt(task)
+	call writeatnode(ij0,nt,ts, corrt,'temp-t')
+	if(fft) then
+		call FFourierT()
+	else
+		call FourierT()
+	endif
+	!call writecorrw(task)
+	call writeatnode(ij0,nw,ws, corrw,'temp-w')
+	
+	deallocate(psi0,psit,corrt,corrw,psitnorm,ws,ts)
+
+	write(6,'(a)')'tcorr: finished...!'
+	return
+	end subroutine evolve
+
+
+!======================================================================
+	!--------------------------------------------------------------------
+	! for the time evolved state to the eigenstaes:
+	! singlet fission matrix elements, on the two fission molecules
+	! nothing happens in the symmetric space, so the perturbation V_{fission}
+	! is diagonal in the symmetric space 
+	!--------------------------------------------------------------------
+	subroutine fmatelemtd(ij1, nj, time) !,n,nph,nev)
+	implicit none
+	integer, intent(in) :: ij1, nj !,n,nph,nev
+	double precision, intent(in) :: time
+	double precision,dimension(nj,nev,nev) :: dm
+	integer :: jj,i1,i2,ij,p,ntotb, is, js
+	double precision :: x1, x2 !, ns, nt
+	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
+	integer :: fn1, fn2, fm1, fm2, ntotsym
+	
+	dm = 0.0d0;
+	ntotsym = (nph+1)*basis%sec(n)%ntot; ! size of the symmetric space block
+	! -------------------------------------------------------
+	!  Singlet fission : V_{fission} = |T,T><S,G| x I_{symmetric space}
+	! -------------------------------------------------------
+	! molecular states' indexing for the two fission molecules: 
+	! 1=G, 2=T, 3=S
+	i1=3; j1=1; ! S, G [mol 1]
+	i2=2; j2=2; ! T, T [mol 2]
+	! location of the symmetric space block [for which V_{fission} is diagonal]
+	! init state block range k1+1:l1
+	k1 = (i1-1)*3*ntotsym + (j1-1)*ntotsym
+	l1 = k1 + ntotsym;
+	! finall state block range k2+1:l2
+	k2 = (i2-1)*3*ntotsym + (j2-1)*ntotsym
+	l2 = k2 + ntotsym;
+
+	! matrix elemets of V_{fission}
+	do ij=1,nj ! jobs
+	 do js=1,nev
+	   dm(ij,js) = dm(ij,js) +
+     .  sum(psit(k1+1:l1) *eig(ij1+ij)%evec(k2+1:l2,js))
+	 end do ! js
+	end do ! ij	
+
+	! write output - serial version at the moment....
+	open(13,file="sfission.dat", form="formatted", 
+     . action="write", position="append")
+	do ij = 1,nj !ij1+1,ij1+nj ! jobs
+	  write(13,*) time, dm(ij,1:nev)
+	end do ! ij
+	close(13)
+	
+	return
+	end subroutine fmatelemtd
+!======================================================================
 
 	end module correlation
 

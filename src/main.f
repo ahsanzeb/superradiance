@@ -691,8 +691,17 @@
 	! set parity and mix marity here req new routines that consider the two fission sites.
 	! might write these later...
 
+	call fmatelem(i-1,1) ! fission matrix elements between the eigenstates
 
-	call sfission(i-1,1)
+	!--------------------------------------------------------------------------
+	! fission matrix elements between an evolved state and the eigenstates
+	!--------------------------------------------------------------------------
+	! set the initial state for the time evolution
+	call seteig0f(i) ! photon, or an exciton S/T on first of the fission pair sites
+	! time evolve the init state
+	call evolve(dt,w1,w2,nt,nw,i,task,nstepf)
+
+	!call sfission(i-1,1)
 
 	return
 	end 	subroutine gsfission

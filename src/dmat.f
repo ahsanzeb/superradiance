@@ -887,7 +887,7 @@
 	! nothing happens in the symmetric space, so the perturbation V_{fission}
 	! is diagonal in the symmetric space 
 	!--------------------------------------------------------------------
-	subroutine sfission(ij1, nj) !,n,nph,nev)
+	subroutine fmatelem(ij1, nj) !,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj !,n,nph,nev
 	double precision,dimension(nj,nev,nev) :: dm
@@ -937,7 +937,7 @@
 	close(13)
 	
 	return
-	end subroutine sfission
+	end subroutine fmatelem
 !======================================================================
 
 
