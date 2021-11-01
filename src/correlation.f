@@ -90,7 +90,7 @@
 		stop "correlation: task =101 only"
 	endif
 
-	write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
+	!write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
 	!write(6,*)'kappa2 = ',kappa2r
 	
 	! set psi0 and corr(t=0)
@@ -412,7 +412,11 @@
 	integer :: i, nsize
 	double precision:: dw
 	double complex :: e0dt
-	
+	character(len=3) :: suf
+
+	! output file name suffix
+	write(suf, '(I3.3)') task
+
 	dt = dt0;	
 	nt = nt0;
 	if(fft) then
@@ -465,7 +469,7 @@
 	! construct init state for time evolution
 	psi0 = eig0%evec(:,1);
 
-	write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
+	!write(6,*)'norm of psi0 = ', sum(abs(psi0)**2)
 	!write(6,*)'kappa2 = ',kappa2r
 	
 	! set psi0 and corr(t=0)
@@ -478,8 +482,8 @@
 
 
 	! time step 1:
-	call fmatelemtd(ij0-1,1,ts(1)) ! fission matrix elements
-	call fPairProb(ij0-1,1,ts(1)) ! fission pair probabilities
+	call fmatelemtd(ij0-1,1,ts(1), suf) ! fission matrix elements
+	call fPairProb(ij0-1,1,ts(1),suf) ! fission pair probabilities
 
 
 
@@ -494,11 +498,8 @@
 		psitnorm(i) = real(DOT_PRODUCT(psit, psit))
 
 		if (mod(i,nstepf) == 0) then
-			write(6,'(a20,2x,i10,a10,i10)') ' time evolution step ',i,
-     .  ' out of ',nt
-			write(6,'(a,E15.10)')'|psit|/|psi| =', psitnorm(i)/psitnorm(1)
-	   call fmatelemtd(ij0-1,1,ts(i)) ! fission matrix elements
-	   call fPairProb(ij0-1,1,ts(i)) ! fission pair probabilities
+	   call fmatelemtd(ij0-1,1,ts(i), suf) ! fission matrix elements
+	   call fPairProb(ij0-1,1,ts(i),suf) ! fission pair probabilities
 		endif
 
 		
@@ -527,7 +528,7 @@
 	
 	deallocate(psi0,psit,corrt,corrw,psitnorm,ws,ts)
 
-	write(6,'(a)')'tcorr: finished...!'
+	write(6,'(a)')'evolve: finished...!'
 	return
 	end subroutine evolve
 
@@ -539,16 +540,18 @@
 	! nothing happens in the symmetric space, so the perturbation V_{fission}
 	! is diagonal in the symmetric space 
 	!--------------------------------------------------------------------
-	subroutine fmatelemtd(ij1, nj, time) !,n,nph,nev)
+	subroutine fmatelemtd(ij1, nj, time, suf) !,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj !,n,nph,nev
 	double precision, intent(in) :: time
+	character(len=3), intent(in) :: suf
+
 	double precision,dimension(nj,nev) :: dm
 	integer :: jj,i1,i2,ij,p,ntotb, is, js
 	double precision :: x1, x2 !, ns, nt
 	integer :: i, j1,j2, k1,k2, n1,n2,m1,m2, l1,l2
 	integer :: fn1, fn2, fm1, fm2, ntotsym
-	
+
 	dm = 0.0d0;
 	ntotsym = (nph+1)*basis%sec(n)%ntot; ! size of the symmetric space block
 	! -------------------------------------------------------
@@ -575,8 +578,8 @@
 	end do ! ij	
 
 	! write output - serial version at the moment....
-	open(13,file="sfission.dat", form="formatted", 
-     . action="write", position="append")
+	open(13,file="fmatelem-"//trim(suf)//".dat", 
+     . form="formatted", action="write", position="append")
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	  write(13,*) time, dm(ij,1:nev)
 	end do ! ij
@@ -599,9 +602,11 @@
 	! and molecular S/T polulations. 
 	! From the elements of the reduced density matrix of the two fission molecules 
 	!--------------------------------------------------------------------
-	subroutine fPairProb(ij1, nj, time) !,n,nph,nev)
+	subroutine fPairProb(ij1, nj, time, suf) !,n,nph,nev)
 	implicit none
 	integer, intent(in) :: ij1, nj !,n,nph,nev
+	character(len=3), intent(in) :: suf
+
 	double precision, intent(in) :: time
 	double precision,dimension(nj,9) :: dm
 	integer :: i1,i2,ij, j1,j2, k1,k2, ntotsym
@@ -614,13 +619,12 @@
 	 do i1 = 1,9
 	 	k1 = (i1-1)*ntotsym
 		k2 = k1 + ntotsym
-	   dm(ij,i1) = dm(ij,i1) +
-     .  sum(psit(k1+1:k2) * psit(k1+1:k2))
+	   dm(ij,i1) = DOT_PRODUCT(psit(k1+1:k2), psit(k1+1:k2))
 	 end do
 	end do ! ij	
 
 	! write output - serial version at the moment....
-	open(13,file="tw-mol-pop.dat", form="formatted", 
+	open(13,file="two-mol-pop-"//trim(suf)//".dat", form="formatted", 
      . action="write", position="append")
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	  write(13,*) time, dm(ij,1:9)

@@ -253,7 +253,6 @@
 	allocate(Hb1%coodat(Hb1%nnz))
 
 	! coo format, local indexing
-
 	i1 = 0;
 	! p=0 and nph cases dealt with seperatly
 	do p=0,nph ! photons
@@ -285,6 +284,9 @@
 	 endif
 		
 	end do ! p
+
+	!write(*,*) "Hg1%coo2: ", Hg1%coo2
+
 
 	! SOC: sigma^+ tau^-
 	! diagonal block of size Hg%ntot
@@ -329,7 +331,10 @@
 	if(allocated(Hc1f)) deallocate(Hc1f)
 	allocate(Hc1f(ntot)) 
 
-
+	Hs1f = 0.0d0;
+	Ht1f = 0.0d0;
+	Hc1f = 0.0d0;
+	
 
 	
 	p1 = 0; q1=0;
@@ -344,7 +349,8 @@
 	    !  matter-light coupling
 	    ! -------------------------------------------------------
 			! molecule 1: |S1><G1| & diagonal in mol 2
-			if(i1==3 .and. j1==1 .and. i2==j2) then 
+			if(i1==1 .and. j1==3 .and. i2==j2) then 
+	 	  !write(*,*)"i1,i2,j1,j2, k1,k2 = ",i1,i2,j1,j2,k1,k2 
 			 p2 = p1 + Hg1%nnz;
 	     Hg1f%coo1(p1+1:p2) = k1 + Hg1%coo1
 	     Hg1f%coo2(p1+1:p2) = k2 + Hg1%coo2
@@ -352,11 +358,12 @@
 	     p1 = p2;
 			endif
 			! molecule 2: |S2><G2| & diagonal in mol 1
-			if(i2==3 .and. j2==1 .and. i1==j1) then 
+			if(i2==1 .and. j2==3 .and. i1==j1) then 
+	 	  !write(*,*)"i1,i2,j1,j2, k1,k2 = ",i1,i2,j1,j2,k1,k2 
 			 p2 = p1 + Hg1%nnz;
 	     Hg1f%coo1(p1+1:p2) = k1 + Hg1%coo1
 	     Hg1f%coo2(p1+1:p2) = k2 + Hg1%coo2
-	     Hg1f%coodat(p1+1:p2) = Hg1%coodat
+	     Hg1f%coodat(p1+1:p2) =  Hg1%coodat
 	     p1 = p2;
 			endif
 
@@ -364,7 +371,7 @@
 	    !  Spin-orbit coupling
 	    ! -------------------------------------------------------
 			! molecule 1: |S1><T1| & diagonal in mol 2
-			if(i1==2 .and. j1==1 .and. i2==j2) then 
+			if(i1==2 .and. j1==3 .and. i2==j2) then 
 			 q2 = q1 + Hb1%nnz;
 	     Hb1f%coo1(q1+1:q2) = k1 + Hb1%coo1
 	     Hb1f%coo2(q1+1:q2) = k2 + Hb1%coo2
@@ -373,7 +380,7 @@
 			endif
 
 			! molecule 2: |S2><T2| & diagonal in mol 1
-			if(i2==2 .and. j2==1 .and. i1==j1) then 
+			if(i2==2 .and. j2==3 .and. i1==j1) then 
 			 q2 = q1 + Hb1%nnz;
 	     Hb1f%coo1(q1+1:q2) = k1 + Hb1%coo1
 	     Hb1f%coo2(q1+1:q2) = k2 + Hb1%coo2
@@ -416,13 +423,17 @@
 	 end do
 	end do
 
+	!write(*,*) "Hs1f: ",Hs1f
+	!write(*,*) "Ht1f: ",Ht1f
+
+
 	! -------------------------------------------------------
 	! Adding diagonal terms for other molecules and cavity in full space
 	! build using the Hs, Ht and Hc
 	! -------------------------------------------------------
 	p1 = 6*Hg1%nnz; ! Hg1f elements for the two molecules, append after these.
 	q1 = 6*Hb1%nnz;
-	do i1=1,9 ! all 9 blocks for the two fission molecules
+	do i1=1,9 ! all 9 diagonal blocks for the two fission molecules
 	 k1 = (i1-1)*ntotsym
 	 k2 = k1 + ntotsym
 	 Hs1f(k1+1:k2) = Hs1f(k1+1:k2) + Hs(1:ntotsym)
@@ -450,7 +461,9 @@
 	end do
 	! -------------------------------------------------------
 
-	
+	!write(*,*)"***********************************************"	
+	!write(*,*) "Hs1f: ",Hs1f
+	!write(*,*) "Ht1f: ",Ht1f
 
 
 	return
@@ -772,15 +785,17 @@
 	delta = param(ijob)%del; ! detuning = w0-w
 	lambda = param(ijob)%lam; ! for lambda_SOC
 
-	g = wr/dsqrt(dble(n+2)); ! +2 for two fission sites. Total num of mol = n+2
+	g = wr/dsqrt(dble(n+2));! +2 for two fission sites. Total num of mol = n+2
 	lamwv = lambda;
 
+	!write(*,*)"g = ", g
+	
 	! half values needed for diagonal terms:  
 	! *0.5 here for efficieny
 	! use wc instead of param(ijob)%wc
 	wcc = (wc)*0.5d0; ! Cavity
 	w0 = (wc+delta)*0.5d0; !Signlet
-	wv = (wc-param(ijob)%j)*0.5d0; ! triplet
+	wv = (wc+delta-param(ijob)%j)*0.5d0; ! triplet: w0 - J
 
 	!write(*,*)"wc, w0, wt = ", 2*wcc, 2*w0, 2*wv
 
@@ -820,7 +835,7 @@
 	Hhtc%coo1(n1+1:n2) = Hg1f%coo1(1:n3)
 	Hhtc%coo2(n1+1:n2) = Hg1f%coo2(1:n3)
 	Hhtc%coodat(n1+1:n2) = g * Hg1f%coodat(1:n3)
-
+	
 
 
 	! Hb afterwards
@@ -885,11 +900,19 @@
 		allocate(Hf%dat(nnz))
 		allocate(Hf%rowpntr(Hf%ntot + 1))
 
-	 ! write(*,*) "coo2csr: Hf%ntot, Hf%nnz = ", Hf%ntot, Hf%nnz
+	!  write(*,*) "coo2csr: Hf%ntot, Hf%nnz = ", Hf%ntot, Hf%nnz
 	!	write(*,*) "**** coo1 ********************************"
 	!write(*,*) Hhtc%coo1
 	!	write(*,*) "******coo2 ****************************"
 	!write(*,*) Hhtc%coo2
+	!	write(*,*) "******coodat ****************************"
+	!write(*,*) Hhtc%coodat
+		!write(*,*) "**********************************"
+	!do i=1,Hg1f%nnz
+	! write(*,*) Hhtc%coo1(i), Hhtc%coo2(i), Hhtc%coodat(i)
+	!end do
+
+
 	
 		call coocsr(Hf%ntot, Hf%nnz, 
      .  Hhtc%coodat, Hhtc%coo1, Hhtc%coo2,  

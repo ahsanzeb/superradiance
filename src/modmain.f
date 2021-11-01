@@ -322,7 +322,7 @@
 	kappa2=0.05;
 	prntstep = 1000;
 	uscfac = 1.0d0;
-	nstepf = 50.0d0;
+	nstepf = 10.0d0;
 	!--------------------------!
 	!     read from input.in   !
 	!--------------------------!

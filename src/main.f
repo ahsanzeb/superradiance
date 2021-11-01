@@ -622,11 +622,11 @@
 	allocate(eig0%evec(n1,1), eig0%eval(1))
 	eig0%eval(1) = 0.0d0; !eig(i)%eval(1)
 
-
+	ntotsym = (nph+1)*basis%sec(n)%ntot;
 
 	if(task==401) then
 	! ------------------------------------------------
-	! a singlet photon in the cavity
+	! a single photon in the cavity
 	!   = |GG> x |GGGG....G> x |1P>
 	! ------------------------------------------------
 	! first block in 9x9, second subblock of basis%sec(n)%ntot size has 1 photon, its first state is |GGGGG....G>

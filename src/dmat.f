@@ -925,7 +925,7 @@
 	end do ! ij	
 
 	! write output - serial version at the moment....
-	open(13,file="sfission.dat", form="formatted", 
+	open(13,file="fmatelem.dat", form="formatted", 
      . action="write", position="append")
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
