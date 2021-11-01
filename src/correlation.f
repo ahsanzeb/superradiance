@@ -489,7 +489,7 @@
 
 	e0dt = (-iotam*eig0%eval(1)-kappa2r)*dt;
 	
-	write(6,'(a,f15.10)')'ELP= ',eig(ij0)%eval(1);
+	!write(6,'(a,f15.10)')'ELP= ',eig(ij0)%eval(1);
 	do i=2,nt
 		call rk4step(psit)
 
