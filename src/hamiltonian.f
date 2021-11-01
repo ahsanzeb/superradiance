@@ -547,7 +547,7 @@
 	! use wc instead of param(ijob)%wc
 	wcc = (wc)*0.5d0; ! Cavity
 	w0 = (wc+delta)*0.5d0; !Signlet
-	wv = (wc-param(ijob)%j)*0.5d0; ! triplet
+	wv = (wc+delta-param(ijob)%j)*0.5d0; ! triplet
 
 	!write(*,*)"wc, w0, wt = ", 2*wcc, 2*w0, 2*wv
 
