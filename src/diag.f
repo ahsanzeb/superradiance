@@ -45,7 +45,7 @@
 		!write(*,*) "diag: iter done.... "
 	endif
 
-	write(*,'(a,1000f10.3)') "Eval: ", eig(ijob)%eval
+	!write(*,'(a,1000f10.3)') "Eval: ", eig(ijob)%eval
 
 	return
 	end	subroutine diagonalise

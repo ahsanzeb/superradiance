@@ -78,8 +78,11 @@
 	nj = jobs(node)%njobs
 
 	!allocate eig
-	allocate(eig(nj))
-
+	!allocate(eig(nj))
+	allocate(eig(1))
+	write(*,*) "main: alloc(eig(nj)) => eig(1) only, save mem."
+	write(*,*) "& groundstate() arguments slightly modified"
+	
 	open(114,file="energy.dat",action='write')
 
 	ij1 = 0;
@@ -119,7 +122,7 @@
   !   .  	eig(i)%eval(1:min(20,eig(i)%n2))
 	!write(*,*)'eig(i)%n2 = ',eig(i)%n2
 
-	write(114,'(100000f25.15)') eig(i)%eval
+	write(114,'(100000f25.15)') eig(1)%eval
 	!write(*,'(100000f10.3)') eig(i)%evec(:,2)
 
 	endif
@@ -434,22 +437,30 @@
 	end 	subroutine checktrace
 	!=============================================================	
 
-	subroutine groundstate(i, ijob, ij1)
+	subroutine groundstate(i0, ijob, ij10)
 	implicit none
-	integer, intent(in) :: i, ijob
-	integer, intent(inout) :: ij1
+	integer, intent(in) :: i0, ijob
+	integer, intent(inout) :: ij10
+	integer :: i, ij1
 
+	i = i0; ! to correctly execute the if block just below with HamParts().
 	! first job? calculate Hamiltonian's parts. 
+		!if(i==1) then
 		if(i==1) then
 			call HamParts(nsym,nph)
 		endif
+
+	i=1; ij1=0; ! set to avoid mem allocation to all jobs, prob when nj and sys size are large... 
+	
 	! things need to be done for every job
 	call MakeHhtc(nsym, ijob) ! ijob===> sets wr,delta,lambda,wv values
 	! diagonalise
+	!call diagonalise(i)
 	call diagonalise(i)
 
 	 ! calc dms to free mem or wait for more jobs?
-	 call checkifgoforcdms(nj,i,goforcdms)
+	 !call checkifgoforcdms(nj,i,goforcdms)
+	 goforcdms = .true.
 
 	 !write(*,*)"i, goforcdms = ",i, goforcdms
 
@@ -469,8 +480,10 @@
 		 call rdmmol2(ij1, njl,n,nph,nev)
 		 call rdmf2(ij1, njl,n,nph,nev)
 		! reset variables for next iteration
-		goforcdms = .false.;
-		ij1 = i;
+		!goforcdms = .false.;
+		goforcdms = .true.;
+		!ij1 = i;
+		i=1; ij1=0; ! set to avoid mem allocation to all jobs, prob when nj and sys size are large... 
 	 end if
 
 	return

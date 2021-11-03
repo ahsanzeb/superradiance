@@ -61,13 +61,13 @@
 	!nt = dm(1,1);
 
 	! write output - serial version at the moment....
-	if(ij1==0) then
-	 open(13,file="mol-pops-par.dat", form="formatted",
-     .  action="write")
-	else
+!	if(ij1==0) then
+!	 open(13,file="mol-pops-par.dat", form="formatted",
+!     .  action="write")
+!	else
 	 open(13,file="mol-pops-par.dat", form="formatted", 
      . action="write", position="append")
-	endif
+!	endif
 
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
@@ -131,12 +131,12 @@
 	!nt = dm(1,1);
 
 	! write output - serial version at the moment....
-	if(ij1==0) then
-		open(13,file="mol-pops.dat", form="formatted", action="write")
-	else
+!	if(ij1==0) then
+!		open(13,file="mol-pops.dat", form="formatted", action="write")
+!	else
 		open(13,file="mol-pops.dat", form="formatted", action="write",
      .                                      position="append")
-	endif
+!	endif
 
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
@@ -195,12 +195,12 @@
 
 	! calculate <a> and <a^+a>
 	! write output - serial version at the moment....
-	if(ij1==0) then
-		open(12,file=trim(fout1), form="formatted", action="write")
-	else
+!	if(ij1==0) then
+!		open(12,file=trim(fout1), form="formatted", action="write")
+!	else
 		open(12,file=trim(fout1), form="formatted", action="write",
      .                                      position="append")
-	endif
+!	endif
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 
@@ -276,12 +276,12 @@
 
 	! calculate <a> and <a^+a>
 	! write output - serial version at the moment....
-	if(ij1==0) then
-		open(12,file=trim(fout1), form="formatted", action="write")
-	else
+!	if(ij1==0) then
+!		open(12,file=trim(fout1), form="formatted", action="write")
+!	else
 		open(12,file=trim(fout1), form="formatted", action="write",
      .                                      position="append")
-	endif
+!	endif
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 
@@ -350,12 +350,12 @@
 	fname = trim(filename)//'-'//trim(rank)
 
 	! write unformatted file
-	if(ij1==0) then
-		open(1,file=trim(fname), form="formatted", action="write")
-	else
+!	if(ij1==0) then
+!		open(1,file=trim(fname), form="formatted", action="write")
+!	else
 		open(1,file=trim(fname), form="formatted", action="write",
      .                                      position="append")
-	endif
+!	endif
 
 
 	
@@ -397,12 +397,12 @@
 	write(rank,'(i6.6)') node
 	fname = trim(filename)//'-'//trim(rank)
 	! write unformatted file
-	if(ij1==0) then
-		open(1,file=trim(fname), form="formatted", action="write")
-	else
+!	if(ij1==0) then
+!		open(1,file=trim(fname), form="formatted", action="write")
+!	else
 		open(1,file=trim(fname), form="formatted", action="write",
      .                                      position="append")
-	endif
+!	endif
 	do ij=1,nj
 		do xj=1,nev
 		  !tr = 0.0d0
@@ -426,7 +426,7 @@
 	integer :: i,ij,k,j,xj
 	character :: rank*30, fname*100
 	!local
-	double precision, dimension(mv+1,mv+1,njobs,nev) :: dm ! nev local
+	double precision, dimension(mv+1,mv+1,nev) :: dm ! nev local
 	character :: dir*30
 	logical :: ex
 
@@ -449,6 +449,14 @@
 	inquire (file=trim(dir), exist=ex)
 	if(.not. ex) call system('mkdir '//trim(dir))
 
+
+	! write output file with data from all nodes
+	fname = trim(dir)//'/'//trim(filename)//'.dat'
+	! read unformatted file
+	open(2,file=trim(fname), form="formatted", action="write",
+     .      position="append")
+
+
 	dm =0.0d0
 
 	do i=0,min(njobs,num_procs)-1
@@ -459,29 +467,20 @@
 		do ij=jobs(i)%i1,jobs(i)%i2
 			do xj=1,nev
 				do k=1,mv+1
-					read(1,*) (dm(k,j,ij,xj), j=1,mv+1)
+					read(1,*) (dm(k,j,xj), j=1,mv+1)
 				end do
 			enddo
-		end do
-		close(1, status='delete')
+	   ! write 
+			do xj=1,nev
+				do k=1,mv+1
+					write(2,*) (dm(k,j,xj), j=1,mv+1)
+				end do
+			enddo
+	  end do ! ij
+		close(1, status='delete')		
 	end do
 
-	! write output file with data from all nodes
-	fname = trim(dir)//'/'//trim(filename)//'.dat'
-	! read unformatted file
-	open(1,file=trim(fname), form="formatted", action="write",
-     .      position="append")
-	do ij=1,njobs
-		do xj=1,nev
-			!call symmetrise(mv+1,dm(:,:,ij,xj)) ! complete lower triangular
-			! symmetrisation already done when dm is calculated
-			do i=1,mv+1
-				write(1,*) (dm(i,j,ij,xj), j=1,mv+1)
-			end do
-		end do
-		!write(*,'(1000f10.5)') (dm(1,j,ij,1), j=1,mv+1)
-	end do
-	close(1)
+	close(2)
 
 	return
 	end 	subroutine rwallnodes
@@ -613,12 +612,12 @@
 	double precision, dimension(eig(1)%ntot,2) :: proj ! projected states, onto definite parity sectors
 	
 	! output parities file
-	if(ij1==0) then
-	 open(110,file="eigparity.dat", form="formatted", action="write")
-	else
+	!if(ij1==0) then
+	! open(110,file="eigparity.dat", form="formatted", action="write")
+	!else
 	 open(110,file="eigparity.dat", form="formatted", action="write",
      .       position="append")
-	endif
+	!endif
 	! set first to even and second to odd parity; consistent with the low light-matter coupling or normal phase. 
 	! the higher eigenstates are sorted according to their larger parity component.
 	do ij=1,nj
@@ -676,7 +675,9 @@
 	integer :: ind0, ind1
 
 
+	
 	do ij=1,nj
+	eig(ij1+ij)%par(nev+1:nev+2) = -1;
 
 	 ! find the lowest even and lowest odd indices
 	 do is=1,nev
@@ -693,9 +694,16 @@
 			exit
 		endif
 	 end do
+
+	 if(eig(ij1+ij)%par(nev+1)<1.or.eig(ij1+ij)%par(nev+2)<1) then
+	 	write(*,*)"Error(dmat): ind0 or ind1 not found! "
+	 	write(*,*)"eig%par(:) = ",eig(ij1+ij)%par
+	 	write(*,*)"stopping....! "
+	 	stop
+	 endif
 		! make +- superpositions of the two lowest parity states:
 		! use the two lowest eigenstates to store these.	
-		write(*,*)"ij, ind0, ind1 = ",ij,  ind0, ind1
+		!write(*,*)"ij, ind0, ind1 = ",ij,  ind0, ind1
 	 	proj = 0.0d0;
 	 	sqr2 = dsqrt(1.0d0/2.0d0);
 	  proj(:,1) = eig(ij1+ij)%evec(:,ind0) * sqr2;
