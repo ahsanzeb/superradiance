@@ -545,9 +545,11 @@
 	! half values needed for diagonal terms:  
 	! *0.5 here for efficieny
 	! use wc instead of param(ijob)%wc
-	wcc = (wc)*0.5d0; ! Cavity
-	w0 = (wc+delta)*0.5d0; !Signlet
-	wv = (wc+delta-param(ijob)%j)*0.5d0; ! triplet
+	w0 = (wc)*0.5d0; ! Signlet, fixed energy
+	wv = (wc-param(ijob)%j)*0.5d0; ! triplet
+	wcc = (wc-delta)*0.5d0; !Cavity, changes with detuning... 
+
+
 
 	!write(*,*)"wc, w0, wt = ", 2*wcc, 2*w0, 2*wv
 
@@ -605,7 +607,17 @@
 	Hhtc%coo2(n1+1:n2) = Hb%coo2(1:n3)
 	Hhtc%coodat(n1+1:n2) = lamwv * Hb%coodat(1:n3)
 
-
+!	write(*,*) "***********************************************"
+!	write(*,*) "Hhtc%coodat: "
+	!write(*,*) Hhtc%coodat(1:n2)
+!	write(*,*) "Hb%coo1(i), Hb%coo2(i), Hb%coodat(i)"
+!	do i=1,n2
+!	 if(Hhtc%coodat(i)<1.0d-6) then
+!	  write(*,*) Hb%coo1(i), Hb%coo2(i), Hb%coodat(i)
+!	 endif
+!	end do
+!	write(*,*) "***********************************************"
+	
 	! now diagonal terms
 	n1 = n2;
 	n3 = Hg%ntot;
@@ -616,7 +628,6 @@
 	Hhtc%coodat(n1+1:n2) = Hdv(1:n3) ! already halved for matvec(), see wc,w0,wt above.
 
 	!write(*,'(a,3x,10000f15.10)') 'Hdv = ',Hhtc%coodat(n1+1:n2)
-
 	!write(*,*) 'Hdv: n1, n2 = ',n1, n2 
 
 
@@ -793,9 +804,9 @@
 	! half values needed for diagonal terms:  
 	! *0.5 here for efficieny
 	! use wc instead of param(ijob)%wc
-	wcc = (wc)*0.5d0; ! Cavity
-	w0 = (wc+delta)*0.5d0; !Signlet
-	wv = (wc+delta-param(ijob)%j)*0.5d0; ! triplet: w0 - J
+	w0 = (wc)*0.5d0; ! Signlet, fixed energy
+	wv = (wc-param(ijob)%j)*0.5d0; ! triplet
+	wcc = (wc-delta)*0.5d0; !Cavity, changes with detuning... 
 
 	!write(*,*)"wc, w0, wt = ", 2*wcc, 2*w0, 2*wv
 
@@ -846,7 +857,6 @@
 	Hhtc%coo1(n1+1:n2) = Hb1f%coo1(1:n3)
 	Hhtc%coo2(n1+1:n2) = Hb1f%coo2(1:n3)
 	Hhtc%coodat(n1+1:n2) = lamwv * Hb1f%coodat(1:n3)
-
 
 	! now diagonal terms
 	n1 = n2;

@@ -6,7 +6,7 @@
 
 	public :: rdmmol, rdmf, rwallnodes, parity, parityeig, setparity
 	public :: mixparity, rdmmol2, rdmf2, dipolematrix, sfissionsym
-	public :: fmatelem
+	public :: fmatelem, rwallnodesorder
 	private :: writeatnode
 	contains
 
@@ -60,15 +60,8 @@
 	!ns = dm(2,2);
 	!nt = dm(1,1);
 
-	! write output - serial version at the moment....
-!	if(ij1==0) then
-!	 open(13,file="mol-pops-par.dat", form="formatted",
-!     .  action="write")
-!	else
 	 open(13,file="mol-pops-par.dat", form="formatted", 
      . action="write", position="append")
-!	endif
-
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 	 do is=1,nev
@@ -90,7 +83,11 @@
 	double precision,dimension(0:2,0:2,nj,nev) :: dm
 	integer :: jj,k1,k2,i1,i2,j1,j2,ij,p,ntotb, is, ind0,ind1
 	double precision :: x1, x2 !, ns, nt
-	
+	character :: rank*30, fout1*100
+
+	write(rank,'(i6.6)') node
+	fout1 = "order-param"//'-'//trim(rank)
+
 	dm = 0.0d0;
 	ntotb = basis%sec(n)%ntot; ! size of mol block
 	 
@@ -129,15 +126,8 @@
 	! calculate <ns> and <nt>
 	!ns = dm(2,2);
 	!nt = dm(1,1);
-
-	! write output - serial version at the moment....
-!	if(ij1==0) then
-!		open(13,file="mol-pops.dat", form="formatted", action="write")
-!	else
-		open(13,file="mol-pops.dat", form="formatted", action="write",
+		open(13,file=trim(fout1), form="formatted", action="write",
      .                                      position="append")
-!	endif
-
 
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 		ind0 = eig(ij1+ij)%par(nev+1);
@@ -246,9 +236,16 @@
 	logical, dimension(nj) :: reorder
 	double precision :: e0,e1
 	character(len=100) :: fout1, fout2
+	character :: rank*30
 
-	fout1 = "order-param.dat";
+	write(rank,'(i6.6)') node
+	fout1 = "order-param"//'-'//trim(rank)
 	fout2 = "dmfield";
+
+
+     
+	!fout1 = "order-param.dat";
+	!fout2 = "dmfield";
 
 	reorder = .false.;
 	
@@ -276,13 +273,6 @@
 
 	! calculate <a> and <a^+a>
 	! write output - serial version at the moment....
-!	if(ij1==0) then
-!		open(12,file=trim(fout1), form="formatted", action="write")
-!	else
-		open(12,file=trim(fout1), form="formatted", action="write",
-     .                                      position="append")
-!	endif
-
 	do ij = 1,nj !ij1+1,ij1+nj ! jobs
 
 	 ! symmetrise dm:
@@ -309,7 +299,8 @@
 	 !write(*,*) "e0,e1 = ",e0,e1
 	endif
 
-
+	open(12,file=trim(fout1), form="formatted", action="write",
+     .                                      position="append")
 	 ! sort positive and negative <a>:
 	 ! write positive <a> first and remember the order for mol pops and dmf.
 	 if(a(1) >= a(2)) then
@@ -948,6 +939,69 @@
 	end subroutine fmatelem
 !======================================================================
 
+
+
+
+
+!------------------------------------------------------------------
+	subroutine rwallnodesorder(filename,n)
+	implicit none
+	character(len=*), intent(in) :: filename
+	integer, intent(in) :: n
+	integer :: i,ij,k,j,xj
+	character :: rank*30, fname*100
+	!local
+	double precision, dimension(4) :: dm ! nev local
+	character :: dir*30
+	logical :: ex
+
+
+	! trim() does not work if you make dir by "write(dir,*) n"
+		if(n<10) then
+			write(dir,'(I1)') n
+		elseif(n<100) then
+			write(dir,'(I2)') n
+		elseif(n<1000) then
+			write(dir,'(I3)') n
+		elseif(n<10000) then
+			write(dir,'(I4)') n
+		else
+			write(*,*)'ERROR: n too large!!!'
+			stop
+		endif
+
+	dir = 'n-'//trim(dir);
+	inquire (file=trim(dir), exist=ex)
+	if(.not. ex) call system('mkdir '//trim(dir))
+
+
+	! write output file with data from all nodes
+	fname = trim(dir)//'/'//trim(filename)//'.dat'
+	! read unformatted file
+	open(2,file=trim(fname), form="formatted", action="write",
+     .      position="append")
+
+
+	dm =0.0d0
+
+	do i=0,min(njobs,num_procs)-1
+		write(rank,'(i6.6)') i
+		fname = trim(filename)//'-'//trim(rank)
+		! read file
+		open(1,file=trim(fname), form="formatted", action="read")
+
+		do ij=jobs(i)%i1,jobs(i)%i2
+		 read(1,*) dm(1:4)
+		 write(2,*) dm(1:4)
+	  end do ! ij
+		close(1, status='delete')		
+	end do
+
+	close(2)
+
+	return
+	end 	subroutine rwallnodesorder
+!------------------------------------------------------------------
 
 
 

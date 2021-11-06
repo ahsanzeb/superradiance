@@ -300,7 +300,7 @@
 	n = 2
 	mv = 2
 	nph=10;
-	wc = 2.0d0;
+	wc = 2.0d0; ! singlet energy
 	parameters = .false.
 	memory = 1.00 ; ! 1 GB per node
 	nev = 1;
@@ -377,7 +377,7 @@
 	case('nph') 
 	 read(50,*,err=20) nph
 
-	case('wc') 
+	case('w0') ! singlet energy, fixed, does not change with detuning.
 	 read(50,*,err=20) wc
 
 	case('N')
@@ -390,6 +390,7 @@
 	case('parameters')
 		parameters = .true.
 		read(50,*,err=20) nwr, ndel, nlam, nwv
+		!write(*,*)"allocated(wrs) = ",allocated(wrs)
 		allocate(wrs(nwr))
 		allocate(dels(ndel))
 		allocate(lams(nlam))

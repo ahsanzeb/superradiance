@@ -20,7 +20,7 @@
 	use mpi
 	use dmat, only: rwallnodes, rdmmol, rdmf, rdmmol2, rdmf2,
      .      dipolematrix, parityeig, setparity,	mixparity,
-     .      sfissionsym, fmatelem
+     .      sfissionsym, fmatelem, rwallnodesorder
 	use correlation, only: tcorr, rwallnodesx, evolve
 	
 	implicit none
@@ -83,7 +83,7 @@
 	write(*,*) "main: alloc(eig(nj)) => eig(1) only, save mem."
 	write(*,*) "& groundstate() arguments slightly modified"
 	
-	open(114,file="energy.dat",action='write')
+	open(114,file="energy.dat",action='write',position='append')
 
 	ij1 = 0;
 	!+++++++++++++++++++++START IJOB LOOP ++++++++++++++++++++++++++
@@ -108,7 +108,7 @@
 		
 	  if(i==1) then
 	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"
-	   write(*,'(a,3x,2i10)')"ntotb, ntot = ",Hg%ntot/nph, Hg%ntot
+	   write(*,'(a,3x,2i10)')"ntotb, ntot = ",Hg%ntot/(nph+1), Hg%ntot
 	   write(*,'(a)')"+++++++++++++++++++++++++++++++++++++++++++++"  
 	  endif
 
@@ -566,6 +566,10 @@
 	 ! broken parity, superposition states, only the lowest two:
 	  call rwallnodes("dmmol",n,2, 2)
 	  call rwallnodes("dmfield",n,nph, 2)
+
+	 ! order parameters
+	 call rwallnodesorder("order-param",n)
+	 !call rwallnodespops("mol-pops",n)
 
 	end select
 	return
