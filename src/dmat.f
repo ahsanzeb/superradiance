@@ -86,7 +86,7 @@
 	character :: rank*30, fout1*100
 
 	write(rank,'(i6.6)') node
-	fout1 = "order-param"//'-'//trim(rank)
+	fout1 = "mol-pops"//'-'//trim(rank)
 
 	dm = 0.0d0;
 	ntotb = basis%sec(n)%ntot; ! size of mol block
@@ -299,21 +299,24 @@
 	 !write(*,*) "e0,e1 = ",e0,e1
 	endif
 
-	open(12,file=trim(fout1), form="formatted", action="write",
+	!write(*,*) 'ijob, dabs(e0-e1) = ',ij,dabs(e0-e1)
+
+	open(18,file=trim(fout1), form="formatted", action="write",
      .                                      position="append")
 	 ! sort positive and negative <a>:
 	 ! write positive <a> first and remember the order for mol pops and dmf.
 	 if(a(1) >= a(2)) then
 	 	reorder(ij) = .false.
-	 	write(12,*) a, ada
+	 	write(18,*) a(1), a(2), ada(1), ada(2)
+	 	!write(*,*)a(1), a(2), ada(1), ada(2)
 	 else
 		reorder(ij) = .true.
-	 	write(12,*) a(2), a(1), ada(2), ada(1)
+	 	write(18,*) a(2), a(1), ada(2), ada(1)
+	 	!write(*,*) a(2), a(1), ada(2), ada(1)
 	 endif
-
 	end do ! ij
 	
-	close(12)
+	close(18)
 
 
 	! write output files at each node, considering reorder
@@ -1001,6 +1004,9 @@
 
 	return
 	end 	subroutine rwallnodesorder
+
+
+	
 !------------------------------------------------------------------
 
 
